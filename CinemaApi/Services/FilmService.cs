@@ -87,6 +87,13 @@ namespace CinemaApi.Services
 
         public async Task<Film> CreateFilm(CreateFilmDto dto, int idUtente)
         {
+            //Controllo se esiste lo stesso film prima dell'aggiunta 
+            var esistente = await _db.Film.FirstOrDefaultAsync(f =>
+            f.Titolo == dto.Titolo &&
+            f.Regista == dto.Regista &&
+            f.AnnoUscita == dto.AnnoUscita);
+            if (esistente != null) return null;
+
             var film = new Film
             {
                 Titolo = dto.Titolo,

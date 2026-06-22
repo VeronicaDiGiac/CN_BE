@@ -40,7 +40,8 @@ namespace CinemaApi.Services
                     Risposte = c.Risposte != null ? c.Risposte.Select(r => new CommentoDto
                     {
                         IdCommento = r.IdCommento,
-                        IdUtente = c.IdUtente,
+                        //Avevo scritto c.IdUtente
+                        IdUtente = r.IdUtente,
                         UserName = r.Utente != null ? r.Utente.UserName : null,
                         Contenuto = r.Contenuto,
                         DataCommento = r.DataCommento
@@ -49,11 +50,11 @@ namespace CinemaApi.Services
                 .ToListAsync();
         }
 
-        public async Task<Commento> CreateCommento(CreateCommentoDto dto)
+        public async Task<Commento> CreateCommento(CreateCommentoDto dto, int idUtente)
         {
             var commento = new Commento
             {
-                //IdUtente = dto.IdUtente,
+                IdUtente = idUtente,
                 IdRecensione = dto.IdRecensione,
                 Contenuto = dto.Contenuto,
                 DataCommento = DateTime.Now,
