@@ -1,4 +1,4 @@
-﻿namespace CinemaApi.DTOs
+﻿namespace CinemaApi.DTOs.ResponseDto
 {
     public class FilmDettaglioDto
     {
@@ -12,5 +12,9 @@
         public string? Descrizione { get; set; }
         public double? VotoMedio { get; set; }
         public int NumeroRecensioni { get; set; }
+
+        // true se l'utente autenticato che chiama questo endpoint ha già
+        // recensito questo film. Resta sempre false per chi non è loggato.
+        public bool GiaRecensito { get; set; }
     }
 }

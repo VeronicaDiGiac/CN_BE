@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs;
+﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 

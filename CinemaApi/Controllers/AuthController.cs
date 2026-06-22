@@ -1,4 +1,5 @@
-﻿using CinemaApi.DTOs;
+﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Mvc;
 

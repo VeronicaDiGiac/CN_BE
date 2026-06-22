@@ -1,4 +1,4 @@
-﻿namespace CinemaApi.DTOs
+﻿namespace CinemaApi.DTOs.RequestDto
 {
     public class RecensioneDto
     {

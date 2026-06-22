@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs;
+﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,13 +30,16 @@ namespace CinemaApi.Services
                 .ToListAsync();
         }
 
-        public async Task<Preferito?> CreatePreferito(CreatePreferitoDto dto)
+        public async Task<Preferito?> CreatePreferito(CreatePreferitoDto dto, int idUtente)
         {
-            var esistente = await _db.Preferiti.FirstOrDefaultAsync(p=>p.IdUtente == dto.IdUtente && p.IdFilm == dto.IdFilm);
+            var esistente = await _db.Preferiti
+                .FirstOrDefaultAsync(p => p.IdUtente == idUtente && p.IdFilm == dto.IdFilm);
+
             if (esistente != null) return null;
+
             var preferito = new Preferito
             {
-                IdUtente = dto.IdUtente,
+                IdUtente = idUtente,
                 IdFilm = dto.IdFilm,
                 DataPreferito = DateTime.Now
             };

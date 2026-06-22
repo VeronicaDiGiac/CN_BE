@@ -1,7 +1,11 @@
-﻿using CinemaApi.DTOs;
+﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.ResponseDto;
+using CinemaApi.Helpers;
 using CinemaApi.Models;
 using CinemaApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CinemaApi.Controllers
 {
@@ -13,108 +17,132 @@ namespace CinemaApi.Controllers
         public FilmController(FilmService filmService) { _filmService = filmService; }
 
         [HttpGet("{id}/dettaglio")]
-        [ProducesResponseType(typeof(FilmDettaglioDto), 200)]
+        [ProducesResponseType(typeof(CinemaApi.DTOs.ResponseDto.FilmDettaglioDto), 200)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> GetDettaglio(int id)
         {
             try
             {
-                var film = await _filmService.GetFilmDettaglio(id);
+                // Autenticazione OPZIONALE: niente [Authorize] qui, l'endpoint
+                // resta pubblico. Se però arriva un token valido, lo leggiamo
+                // comunque per popolare GiaRecensito; altrimenti resta null
+                // e GiaRecensito sarà sempre false.
+                int? idUtenteAutenticato = null;
+                var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (claim != null)
+                {
+                    idUtenteAutenticato = int.Parse(claim.Value);
+                }
+
+                var film = await _filmService.GetFilmDettaglio(id, idUtenteAutenticato);
                 if (film == null) return NotFound();
                 return Ok(film);
             }
             catch (Exception ex)
             {
-                return StatusCode(500);
+                return StatusCode(500, ex.Message);
             }
         }
 
-            [HttpGet]
-            //Per ogni possibile risposta del metodo produce un responsetype
-            [ProducesResponseType(typeof(List<Film>), 200)]
-            [ProducesResponseType(500)]
-        public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori)
+        [HttpGet]
+        [ProducesResponseType(typeof(PagedResultDto<Film>), 200)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber = 1, int pageSize = 20)
+        {
+            try
             {
-                try
-                {
-                    var film = await _filmService.GetFilm(titolo, regista, annoUscita, genere, attori);
-                    return Ok(film);
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, ex.Message);
-                }
+                var risultato = await _filmService.GetFilm(titolo, regista, annoUscita, genere, attori, pageNumber, pageSize);
+                return Ok(risultato);
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
 
-            [HttpGet("{id}")]
-            [ProducesResponseType(typeof(Film), 200)]
-            [ProducesResponseType(404)]
-            [ProducesResponseType(500)]
+        [HttpGet("{id}")]
+        [ProducesResponseType(typeof(CinemaApi.Models.Film), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
         public async Task<IActionResult> GetById(int id)
+        {
+            try
             {
-                try
-                {
-                    var film = await _filmService.GetFilmById(id);
-                    if (film == null) return NotFound();
-                    return Ok(film);
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, ex.Message);
-                }
+                var film = await _filmService.GetFilmById(id);
+                if (film == null) return NotFound();
+                return Ok(film);
             }
-
-            [HttpPost]
-            [ProducesResponseType(typeof(Film), 201)]
-            [ProducesResponseType(500)]
-        public async Task<IActionResult> Create([FromBody] CreateFilmDto dto, int IdUtente)
+            catch (Exception ex)
             {
-                try
-                {
-                    var film = await _filmService.CreateFilm(dto, IdUtente);
-                    return CreatedAtAction(nameof(Create), film);
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, ex.Message);
-                }
+                return StatusCode(500, ex.Message);
             }
+        }
 
-            [HttpPut("{id}")]
-            [ProducesResponseType(204)]
-            [ProducesResponseType(404)]
-            [ProducesResponseType(500)]
+        [HttpPost]
+        [Authorize]
+        [ProducesResponseType(typeof(CinemaApi.Models.Film), 201)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> Create([FromBody] CreateFilmDto dto)
+        {
+            try
+            {
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var film = await _filmService.CreateFilm(dto, idUtenteAutenticato);
+                return CreatedAtAction(nameof(Create), film);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPut("{id}")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateFilmDto dto)
+        {
+            try
             {
-                try
-                {
-                    var aggiornato = await _filmService.UpdateFilm(id, dto);
-                    if (!aggiornato) return NotFound();
-                    return NoContent();
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, ex.Message);
-                }
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+                var film = await _filmService.GetFilmById(id);
+                if (film == null) return NotFound();
+                if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+                var aggiornato = await _filmService.UpdateFilm(id, dto);
+                if (!aggiornato) return NotFound();
+                return NoContent();
             }
-
-            [HttpDelete("{id}")]
-            [ProducesResponseType(204)]
-            [ProducesResponseType(404)]
-            [ProducesResponseType(500)]
-        public async Task<IActionResult> Delete(int id)
+            catch (Exception ex)
             {
-                try
-                {
-                    var eliminato = await _filmService.DeleteFilm(id);
-                    if (!eliminato) return NotFound();
-                    return NoContent();
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, ex.Message);
-                }
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+                var film = await _filmService.GetFilmById(id);
+                if (film == null) return NotFound();
+                if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+                var eliminato = await _filmService.DeleteFilm(id);
+                if (!eliminato) return NotFound();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
             }
         }
     }
+}

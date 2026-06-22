@@ -1,4 +1,5 @@
-﻿using CinemaApi.DTOs;
+﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,11 @@ namespace CinemaApi.Services
         public CommentiService(CinemaContext db)
         {
             _db = db;
+        }
+
+        public async Task<Commento?> GetCommentoById(int id)
+        {
+            return await _db.Commenti.FindAsync(id);
         }
 
         public async Task<List<CommentoDto>> GetCommenti(int? idRecensione, int? idUtente)
@@ -47,7 +53,7 @@ namespace CinemaApi.Services
         {
             var commento = new Commento
             {
-                IdUtente = dto.IdUtente,
+                //IdUtente = dto.IdUtente,
                 IdRecensione = dto.IdRecensione,
                 Contenuto = dto.Contenuto,
                 DataCommento = DateTime.Now,

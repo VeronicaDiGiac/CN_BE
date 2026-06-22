@@ -1,6 +1,8 @@
-﻿using CinemaApi.DTOs;
+﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CinemaApi.Controllers
 {
@@ -28,6 +30,7 @@ namespace CinemaApi.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         [ProducesResponseType(typeof(object), 201)]
         [ProducesResponseType(409)]
         [ProducesResponseType(500)]
@@ -35,7 +38,8 @@ namespace CinemaApi.Controllers
         {
             try
             {
-                var preferito = await _preferitiService.CreatePreferito(dto);
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var preferito = await _preferitiService.CreatePreferito(dto, idUtenteAutenticato);
                 if (preferito == null) return Conflict("Film già presente nei preferiti");
                 return CreatedAtAction(nameof(Create), preferito);
             }

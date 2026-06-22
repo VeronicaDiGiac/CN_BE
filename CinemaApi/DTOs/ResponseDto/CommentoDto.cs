@@ -1,4 +1,4 @@
-﻿namespace CinemaApi.DTOs
+﻿namespace CinemaApi.DTOs.ResponseDto
 {
     public class CommentoDto
     {

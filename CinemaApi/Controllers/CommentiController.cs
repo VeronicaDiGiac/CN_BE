@@ -1,6 +1,10 @@
-﻿using CinemaApi.DTOs;
+﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.ResponseDto;
+using CinemaApi.Helpers;
 using CinemaApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CinemaApi.Controllers
 {
@@ -44,6 +48,7 @@ namespace CinemaApi.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize]
         [ProducesResponseType(204)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
@@ -51,8 +56,12 @@ namespace CinemaApi.Controllers
         {
             try
             {
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+                var commenti = await _commentiService.GetCommentoById(id);
+                if (commenti == null) return NotFound();
+                if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
                 var aggiornato = await _commentiService.UpdateCommento(id, dto);
-                if (!aggiornato) return NotFound();
                 return NoContent();
             }
             catch (Exception ex)
@@ -62,6 +71,7 @@ namespace CinemaApi.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         [ProducesResponseType(204)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
@@ -69,6 +79,11 @@ namespace CinemaApi.Controllers
         {
             try
             {
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+                var commenti = await _commentiService.GetCommentoById(id);
+                if (commenti == null) return NotFound();
+                if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
                 var eliminato = await _commentiService.DeleteCommento(id);
                 if (!eliminato) return NotFound();
                 return NoContent();

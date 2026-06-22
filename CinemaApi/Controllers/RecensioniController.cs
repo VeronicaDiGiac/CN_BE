@@ -1,7 +1,9 @@
-﻿using CinemaApi.DTOs;
+﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.Helpers;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
 using System.Security.Claims;
 
 namespace CinemaApi.Controllers
@@ -58,9 +60,12 @@ namespace CinemaApi.Controllers
             try
             {
                 var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value; 
                 var recensione = await _recensioniService.GetRecensioneById(id);
                 if (recensione == null) return NotFound();
-                if (recensione.IdUtente != idUtenteAutenticato) return Forbid();
+                //Sostituisco il forbidden con il controllo Admin che ho inserito negli helpers
+                //if (recensione.IdUtente != idUtenteAutenticato) return Forbid();
+                if (!AutorizzazioneHelper.PuoModificare(recensione.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
                 await _recensioniService.UpdateRecensione(id, dto);
                 return NoContent();
             }
@@ -81,9 +86,11 @@ namespace CinemaApi.Controllers
             try
             {
                 var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
                 var recensione = await _recensioniService.GetRecensioneById(id);
                 if (recensione == null) return NotFound();
-                if (recensione.IdUtente != idUtenteAutenticato) return Forbid();
+                //if (recensione.IdUtente != idUtenteAutenticato) return Forbid();
+                if (!AutorizzazioneHelper.PuoModificare(recensione.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
                 var eliminata = await _recensioniService.DeleteRecensione(id);
                 if (!eliminata) return NotFound();
                 return NoContent();
