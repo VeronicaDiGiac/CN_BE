@@ -32,13 +32,15 @@ namespace CinemaApi.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         [ProducesResponseType(typeof(object), 201)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateCommentoDto dto)
         {
             try
             {
-                var commento = await _commentiService.CreateCommento(dto);
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var commento = await _commentiService.CreateCommento(dto, idUtenteAutenticato);
                 return CreatedAtAction(nameof(Create), commento);
             }
             catch (Exception ex)
