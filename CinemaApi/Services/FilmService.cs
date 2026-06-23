@@ -8,9 +8,11 @@ namespace CinemaApi.Services
     public class FilmService
     {
         private readonly CinemaContext _db;
-        public FilmService(CinemaContext db)
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        public FilmService(CinemaContext db, IWebHostEnvironment webHostEnvironment)
         {
             _db = db;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         // idUtenteAutenticato è nullable: null se chi chiama non è loggato,
@@ -61,7 +63,7 @@ namespace CinemaApi.Services
 
         public async Task<PagedResultDto<Film>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize)
         {
-              //Da Ricordare : la query costruita non è ancora eseguita, la uso due volte, una volta per contare il totale una volta per prendere la pagina specifica, se eseguissi ToListAsync non si potrebbe contare niente.
+            //Da Ricordare : la query costruita non è ancora eseguita, la uso due volte, una volta per contare il totale una volta per prendere la pagina specifica, se eseguissi ToListAsync non si potrebbe contare niente.
             var query = _db.Film
                 .Where(f => titolo == null || f.Titolo.Contains(titolo))
                 .Where(f => regista == null || f.Regista.Contains(regista))
@@ -132,6 +134,29 @@ namespace CinemaApi.Services
             _db.Film.Remove(film);
             await _db.SaveChangesAsync();
             return true;
+        }
+
+
+        public async Task<String?> SaveImage(int id, IFormFile file)
+        {
+            var film = await _db.Film.FindAsync(id); 
+            if (film == null) return null;
+            var estensione = Path.GetExtension(file.FileName);
+            //Questo procede una cosa tipo : a3f29c1e-8b4d-4f2a-9c3e-1d5f7a8b9c0d.jpg
+            var nomeFileUnivoco = $"{Guid.NewGuid()}{estensione}";
+            //Unisce un percorso valido tipo C:\CinemaApi\CinemaApi\wwwroot\uploads\film.
+            var cartellaUpload = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "film");
+            //Ci aggiunge il nome del file
+            var percorsoCompleto = Path.Combine ( cartellaUpload, nomeFileUnivoco );
+            //QUesto salva il file sul disco fisico 
+            using (var stream = new FileStream(percorsoCompleto, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+            var urlRelativo = $"/uploads/film/{nomeFileUnivoco}";
+            film.ImmagineUrl = urlRelativo;
+            await _db.SaveChangesAsync();
+            return urlRelativo;
         }
     }
 }

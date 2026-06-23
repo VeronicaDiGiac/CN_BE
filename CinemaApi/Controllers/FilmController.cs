@@ -146,5 +146,37 @@ namespace CinemaApi.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+    
+
+    [HttpPost("{id}/immagine")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> UploadImmagine(int id, IFormFile file)
+        {
+            try
+            {
+                if (!FileValidationHelper.EImmagineValida(file, out var errore))
+                    return BadRequest(errore);
+                if (!await FileValidationHelper.HaFirmaBinariaValida(file))
+                    return BadRequest("Il file non sembra essere un'immagine valida");
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+                var film = await _filmService.GetFilmById(id);
+                if (film == null) return NotFound();
+                if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+           
+                var updateUrlImage = await _filmService.SaveImage(id, file);
+                //Capire se lasciarlo il doppio controllo 
+                if (updateUrlImage == null) return NotFound();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
     }
 }
