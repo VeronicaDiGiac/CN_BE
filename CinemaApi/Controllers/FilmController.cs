@@ -82,6 +82,7 @@ namespace CinemaApi.Controllers
         [HttpPost]
         [Authorize]
         [ProducesResponseType(typeof(CinemaApi.Models.Film), 201)]
+        [ProducesResponseType(409)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateFilmDto dto)
         {
@@ -89,6 +90,7 @@ namespace CinemaApi.Controllers
             {
                 var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
                 var film = await _filmService.CreateFilm(dto, idUtenteAutenticato);
+                if (film == null) return Conflict("Esiste già un film con questo titolo");
                 return CreatedAtAction(nameof(Create), film);
             }
             catch (Exception ex)
