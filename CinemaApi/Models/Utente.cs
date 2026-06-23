@@ -12,6 +12,8 @@ namespace CinemaApi.Models
         public required string Ruolo { get; set; }
         public DateTime? DataDiRegistrazione { get; set; }
         public string? PasswordHash { get; set; }
+        public string? Bio {  get; set; }
+        public string? AvatarUrl { get; set; }
 
         // Navigation properties
         public ICollection<Recensione>? Recensioni { get; set; }

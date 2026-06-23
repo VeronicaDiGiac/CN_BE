@@ -45,11 +45,21 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 5 * 1024 * 1024; // 5 MB
+});
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 5 * 1024 * 1024; // 5 MB
+});
 builder.Services.AddScoped<FilmService>();
 builder.Services.AddScoped<RecensioniService>();
 builder.Services.AddScoped<CommentiService>();
 builder.Services.AddScoped<PreferitiService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<UtentiService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -80,6 +90,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
+
+app.UseStaticFiles();
 
 app.UseAuthorization();
 
