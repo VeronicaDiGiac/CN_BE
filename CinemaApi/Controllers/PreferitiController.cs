@@ -50,13 +50,25 @@ namespace CinemaApi.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         [ProducesResponseType(204)]
+        [ProducesResponseType(403)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Delete(int id)
         {
             try
             {
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+
+                var preferito = await _preferitiService.GetPreferitoById(id);
+                if (preferito == null) return NotFound();
+
+                // Controllo proprietario: puoi eliminare solo i TUOI preferiti.
+                // Niente eccezione Admin: i preferiti sono personali, un Admin non
+                // ha motivo di toccare i preferiti altrui.
+                if (preferito.IdUtente != idUtenteAutenticato) return Forbid();
+
                 var eliminato = await _preferitiService.DeletePreferito(id);
                 if (!eliminato) return NotFound();
                 return NoContent();

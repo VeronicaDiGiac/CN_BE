@@ -13,6 +13,13 @@ namespace CinemaApi.Services
             _db = db;
         }
 
+        public async Task<Preferito?> GetPreferitoById(int id)
+        {
+            return await _db.Preferiti.FindAsync(id);
+        }
+
+
+
         public async Task<List<object>> GetPreferiti(int? idUtente)
         {
             return await _db.Preferiti
