@@ -7,12 +7,10 @@ using Microsoft.EntityFrameworkCore;
 namespace CinemaApi.Services
 {
     public class UtentiService
-
-
     {
-
         private readonly CinemaContext _db;
         private readonly IWebHostEnvironment _webHostEnvironment;
+
         public UtentiService(CinemaContext db, IWebHostEnvironment webHostEnvironment)
         {
             _db = db;
@@ -22,26 +20,27 @@ namespace CinemaApi.Services
         public async Task<bool> UpdateProfilo(int id, UpdateProfiloDto dto)
         {
             var utente = await _db.Utenti.FindAsync(id);
+            if (utente == null) return false;
 
-            if (dto.UserName == null)
+            // Aggiorna SOLO i campi effettivamente forniti (!= null),
+            // così un aggiornamento parziale non azzera i campi non inviati.
+            if (dto.UserName != null)
             {
-                
-                    utente.UserName = dto.UserName;
-                }
-                if (dto.Bio == null)
-                {
-                    utente.Bio = dto.Bio;
-                }
-
-                await _db.SaveChangesAsync();
-                return true;
+                utente.UserName = dto.UserName;
             }
-      
+            if (dto.Bio != null)
+            {
+                utente.Bio = dto.Bio;
+            }
+
+            await _db.SaveChangesAsync();
+            return true;
+        }
 
         public async Task<UtenteProfiloDto?> GetProfilo(int? idUtente)
         {
             var profilo = await _db.Utenti
-                .Where(u => u.IdUtente ==  idUtente)
+                .Where(u => u.IdUtente == idUtente)
                 .Select(u => new UtenteProfiloDto
                 {
                     IdUtente = u.IdUtente,
@@ -51,7 +50,6 @@ namespace CinemaApi.Services
                     DataDiRegistrazione = u.DataDiRegistrazione
                 })
                 .FirstOrDefaultAsync();
-
             return profilo;
         }
 
@@ -65,27 +63,31 @@ namespace CinemaApi.Services
             return true;
         }
 
-        public async Task<String?> SaveAvatar(int id, IFormFile file)
+        public async Task<string?> SaveAvatar(int id, IFormFile file)
         {
             var utente = await _db.Utenti.FindAsync(id);
             if (utente == null) return null;
+
             var estensione = Path.GetExtension(file.FileName);
-            //Questo procede una cosa tipo : a3f29c1e-8b4d-4f2a-9c3e-1d5f7a8b9c0d.jpg
+            // Genera un nome univoco tipo: a3f29c1e-8b4d-4f2a-9c3e-1d5f7a8b9c0d.jpg
             var nomeFileUnivoco = $"{Guid.NewGuid()}{estensione}";
-            //Unisce un percorso valido tipo C:\CinemaApi\CinemaApi\wwwroot\uploads\film.
+
+            // Percorso fisico della cartella, es: C:\...\wwwroot\uploads\avatar
             var cartellaUpload = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "avatar");
-            //Ci aggiunge il nome del file
             var percorsoCompleto = Path.Combine(cartellaUpload, nomeFileUnivoco);
-            //QUesto salva il file sul disco fisico 
+
+            // Salva il file sul disco fisico
             using (var stream = new FileStream(percorsoCompleto, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
-            var urlRelativo = $"/uploads/ivo;avatar/{nomeFileUnivoco}";
+
+            // URL relativo pubblico (corretto, senza refusi)
+            var urlRelativo = $"/uploads/avatar/{nomeFileUnivoco}";
             utente.AvatarUrl = urlRelativo;
             await _db.SaveChangesAsync();
+
             return urlRelativo;
         }
-
     }
 }
