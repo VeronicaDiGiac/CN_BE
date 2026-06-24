@@ -60,6 +60,7 @@ builder.Services.AddScoped<CommentiService>();
 builder.Services.AddScoped<PreferitiService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UtentiService>();
+builder.Services.AddScoped<FollowService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

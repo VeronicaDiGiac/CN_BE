@@ -148,7 +148,7 @@ namespace CinemaApi.Controllers
         }
     
 
-    [HttpPost("{id}/immagine")]
+        [HttpPost("{id}/immagine")]
         [Authorize]
         [ProducesResponseType(204)]
         [ProducesResponseType(400)]

@@ -1,5 +1,6 @@
 ﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
+using CinemaApi.Helpers;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -76,6 +77,38 @@ namespace CinemaApi.Controllers
 
                 var eliminato = await _utentiService.DeleteProfilo(id);
                 if (!eliminato) return NotFound();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/avatar")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> UploadAvatar(int id, IFormFile file)
+        {
+            try
+            {
+                if (!FileValidationHelper.EImmagineValida(file, out var errore))
+                    return BadRequest(errore);
+                if (!await FileValidationHelper.HaFirmaBinariaValida(file))
+                    return BadRequest("Il file non sembra essere un'immagine valida");
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+                var utente = await _utentiService.GetProfilo(id);
+                if (utente == null) return NotFound();
+                //Controllo: Per ora l'admin non può fare upload dell'avatar al posto dell'utente 
+                if (id != idUtenteAutenticato) return Forbid();
+
+                var updateUrlImage = await _utentiService.SaveAvatar(id, file);
+                //Capire se lasciarlo il doppio controllo 
+                if (updateUrlImage == null) return NotFound();
                 return NoContent();
             }
             catch (Exception ex)
