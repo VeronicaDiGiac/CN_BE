@@ -21,11 +21,15 @@ namespace CinemaApi.Controllers
             try
             {
                 var risultato = await _authService.Login(dto);
+                // QUI: Unauthorized con ErrorResponseDto
+                // (StatusCode = 401, Messaggio = "Email o password non corretti")
                 if (risultato == null) return Unauthorized();
                 return Ok(risultato);
             }
             catch (Exception ex)
             {
+                // QUI: StatusCode 500 con ErrorResponseDto
+                // (Messaggio generico per l'utente, ex.Message eventualmente in Dettaglio)
                 return StatusCode(500, ex.Message);
             }
         }
@@ -39,11 +43,14 @@ namespace CinemaApi.Controllers
             try
             {
                 var risultato = await _authService.Register(dto);
+                // QUI: BadRequest con ErrorResponseDto
+                // (StatusCode = 400, Messaggio = "Email già registrata")
                 if (risultato == null) return BadRequest("Email già registrata");
                 return Ok(risultato);
             }
             catch (Exception ex)
             {
+                // QUI: StatusCode 500 con ErrorResponseDto
                 return StatusCode(500, ex.Message);
             }
         }

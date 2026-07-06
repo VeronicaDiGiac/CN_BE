@@ -15,9 +15,11 @@ namespace CinemaApi.Models
         public DbSet<Preferito> Preferiti { get; set; }
 
         public DbSet<Follow> Follow { get; set; }
-    
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+        public DbSet<Segnalazione> Segnalazioni { get; set; }
+
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)
