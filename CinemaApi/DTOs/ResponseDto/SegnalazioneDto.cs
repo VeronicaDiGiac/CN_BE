@@ -11,5 +11,12 @@
         public int IdContenuto { get; set; }
         public string? Motivo { get; set; }
         public DateTime? DataSegnalazione { get; set; }
+
+        public string Stato { get; set; } = "";
+        public DateTime? DataGestione { get; set; }
+        public int? IdAdminGestore { get; set; }
+
+        public int? IdFilm { get; set; }
+
     }
 }

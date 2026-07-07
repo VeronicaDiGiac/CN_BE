@@ -41,7 +41,7 @@ namespace CinemaApi.Controllers
         {
             try
             {
-                var segnalazioni = await _segnalazioniService.GetSegalazione();
+                var segnalazioni = await _segnalazioniService.GetSegnalazioni();
                 return Ok(segnalazioni);
             }
             catch (Exception ex)
@@ -49,5 +49,27 @@ namespace CinemaApi.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        [HttpPut("{id}/stato")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> UpdateStato(int id, [FromBody] UpdateStatoSegnalazioneDto dto)
+        {
+            try
+            {
+                var idAdmin = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var aggiornata = await _segnalazioniService.UpdateStato(id, dto, idAdmin);
+                if (!aggiornata) return NotFound();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+
     }
 }

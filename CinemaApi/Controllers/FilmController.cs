@@ -71,6 +71,7 @@ namespace CinemaApi.Controllers
             {
                 var film = await _filmService.GetFilmById(id);
                 if (film == null) return NotFound();
+                if (film.Stato != "Approvato") return NotFound();
                 return Ok(film);
             }
             catch (Exception ex)
@@ -89,7 +90,8 @@ namespace CinemaApi.Controllers
             try
             {
                 var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                var film = await _filmService.CreateFilm(dto, idUtenteAutenticato);
+                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+                var film = await _filmService.CreateFilm(dto, idUtenteAutenticato, ruolo);
                 if (film == null) return Conflict("Esiste già un film con questo titolo");
                 return CreatedAtAction(nameof(Create), film);
             }
@@ -122,6 +124,8 @@ namespace CinemaApi.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+
 
         [HttpDelete("{id}")]
         [Authorize]
@@ -172,6 +176,42 @@ namespace CinemaApi.Controllers
                 //Capire se lasciarlo il doppio controllo 
                 if (updateUrlImage == null) return NotFound();
                 return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPut("{id}/stato")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> UpdateStatoFilm(int id, [FromBody] UpdateStatoFilmDto dto)
+        {
+            try
+            {
+                var aggiornato = await _filmService.UpdateStatoFilm(id, dto.Stato);
+                if (!aggiornato) return NotFound();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpGet("inattesa")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(List<Film>), 200)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> GetInAttesa()
+        {
+            try
+            {
+                var film = await _filmService.GetFilmInAttesa();
+                return Ok(film);
             }
             catch (Exception ex)
             {

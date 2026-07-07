@@ -20,6 +20,8 @@ namespace CinemaApi.Models
 
         public string? Descrizione { get; set; }
 
+        public string Stato { get; set; } = "InAttesa";
+
         // Navigation properties
         public ICollection<Recensione>? Recensioni { get; set; }
         public ICollection<Preferito>? Preferiti { get; set; }

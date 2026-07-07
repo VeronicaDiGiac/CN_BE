@@ -1,7 +1,8 @@
-﻿using CinemaApi.DTOs.ResponseDto;
-using CinemaApi.DTOs.RequestDto;
+﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace CinemaApi.Services
 {
@@ -21,6 +22,7 @@ namespace CinemaApi.Services
         {
             var film = await _db.Film
                 .Where(f => f.IdFilm == id)
+                .Where (f=>f.Stato == "Approvato")
                 .Select(f => new FilmDettaglioDto
                 {
                     IdFilm = f.IdFilm,
@@ -69,7 +71,9 @@ namespace CinemaApi.Services
                 .Where(f => regista == null || f.Regista.Contains(regista))
                 .Where(f => genere == null || f.Genere.Contains(genere))
                 .Where(f => annoUscita == null || f.AnnoUscita == annoUscita)
-                .Where(f => attori == null || f.Attori.Contains(attori));
+                .Where(f => attori == null || f.Attori.Contains(attori))
+                .Where(f => f.Stato == "Approvato");
+
 
             var totalCount = await query.CountAsync();
 
@@ -87,7 +91,7 @@ namespace CinemaApi.Services
             };
         }
 
-        public async Task<Film?> CreateFilm(CreateFilmDto dto, int idUtente)
+        public async Task<Film?> CreateFilm(CreateFilmDto dto, int idUtente, string ruolo)
         {
             //Controllo se esiste lo stesso film prima dell'aggiunta 
             var esistente = await _db.Film.FirstOrDefaultAsync(f =>
@@ -105,7 +109,9 @@ namespace CinemaApi.Services
                 Attori = dto.Attori,
                 ImmagineUrl = dto.ImmagineUrl,
                 Descrizione = dto.Descrizione,
-                IdUtente = idUtente
+                IdUtente = idUtente,
+                // Admin: film approvato subito. Utente normale: in attesa di revisione.
+                Stato = ruolo == "Admin" ? "Approvato" : "InAttesa"
             };
             _db.Film.Add(film);
             await _db.SaveChangesAsync();
@@ -158,5 +164,24 @@ namespace CinemaApi.Services
             await _db.SaveChangesAsync();
             return urlRelativo;
         }
+        public async Task<List<Film>> GetFilmInAttesa()
+        {
+            return await _db.Film
+                .Where(f => f.Stato == "InAttesa")
+                .ToListAsync();
+        }
+
+        public async Task<bool> UpdateStatoFilm(int id, string nuovoStato)
+        {
+            var film = await _db.Film.FindAsync(id);
+            if (film == null) return false;
+            film.Stato = nuovoStato;
+            await _db.SaveChangesAsync();
+            return true;
+        }
     }
+
+
+
+
 }

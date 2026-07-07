@@ -14,23 +14,37 @@ namespace CinemaApi.Services
             _db = db;
         }
 
-        public async Task<List<SegnalazioneDto>> GetSegalazione()
+        public async Task<List<SegnalazioneDto>> GetSegnalazioni()
         {
             return await _db.Segnalazioni
-                //.Where(s => s.SegnalazioniId == idUtente) il filtro where non serve, lato admin vedo tutto
-                .Select(s => new SegnalazioneDto {
+                .Select(s => new SegnalazioneDto
+                {
                     IdSegnalazione = s.IdSegnalazione,
                     IdUtente = s.IdUtente,
                     UserName = s.Utente != null ? s.Utente.UserName : null,
                     TipoContenuto = s.TipoContenuto,
                     IdContenuto = s.IdContenuto,
                     Motivo = s.Motivo,
-                    DataSegnalazione = s.DataSegnalazione
+                    DataSegnalazione = s.DataSegnalazione,
+                    Stato = s.Stato,
+                    DataGestione = s.DataGestione,
+                    IdAdminGestore = s.IdAdminGestore,
+
+                    // idFilm ricavato a seconda del tipo di contenuto segnalato
+                    IdFilm = s.TipoContenuto == "Recensione"
+                        ? _db.Recensioni
+                            .Where(r => r.IdRecensione == s.IdContenuto)
+                            .Select(r => (int?)r.IdFilm)
+                            .FirstOrDefault()
+                        : _db.Commenti
+                            .Where(c => c.IdCommento == s.IdContenuto)
+                            .Select(c => (int?)c.Recensione.IdFilm)
+                            .FirstOrDefault()
                 })
                 .ToListAsync();
         }
-    
-  public async Task<Segnalazione?> CreateSegnalazione(CreateSegnalazioneDto dto, int idUtente)
+
+        public async Task<Segnalazione?> CreateSegnalazione(CreateSegnalazioneDto dto, int idUtente)
         {
             var segnalazione = new Segnalazione
             {
@@ -45,5 +59,24 @@ namespace CinemaApi.Services
             return segnalazione;
         }
 
+    
+
+    public async Task<bool> UpdateStato(int idSegnalazione, UpdateStatoSegnalazioneDto dto, int idAdmin)
+        {
+            var segnalazione = await _db.Segnalazioni.FindAsync(idSegnalazione);
+            if ( segnalazione == null) return false;
+            segnalazione.Stato = dto.Stato;
+            segnalazione.DataSegnalazione = DateTime.Now;
+            segnalazione.IdAdminGestore = idAdmin;
+
+            await _db.SaveChangesAsync();
+            return true;
+            // se null → false
+            // aggiorna Stato, DataGestione, IdAdminGestore
+            // salva
+            // return true
+        }
+
+
     }
-    }
+}

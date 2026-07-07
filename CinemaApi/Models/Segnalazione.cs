@@ -16,5 +16,12 @@ namespace CinemaApi.Models
         // Navigation property verso l'utente che ha fatto la segnalazione.
         [ForeignKey("IdUtente")]
         public Utente? Utente { get; set; }
+
+        //Nuove prop 
+        public string Stato { get; set; } = "Aperta";
+        public DateTime? DataGestione { get; set; }
+        
+        //Non so se mi serve la foreignKey effettivamente o solo leggere il numero dell'amministratore e non pure il nome ecc
+        public int? IdAdminGestore { get; set; }
     }
 }
