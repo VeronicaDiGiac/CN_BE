@@ -63,6 +63,12 @@ builder.Services.AddScoped<UtentiService>();
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<SegnalazioniService>();
 
+// La chiave JWT non sta in appsettings.json: va negli User Secrets
+// (dotnet user-secrets set "Jwt:Key" "<chiave di almeno 32 caratteri>").
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException(
+        "Jwt:Key mancante. Impostala con: dotnet user-secrets set \"Jwt:Key\" \"<chiave di almeno 32 caratteri>\"");
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -75,7 +81,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+                Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 

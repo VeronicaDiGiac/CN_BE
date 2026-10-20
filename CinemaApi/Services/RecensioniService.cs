@@ -38,13 +38,13 @@ namespace CinemaApi.Services
                 .ToListAsync();
         }
 
-        public async Task<Recensione> CreateRecensione(CreateRecensioneDto dto)
+        public async Task<Recensione?> CreateRecensione(CreateRecensioneDto dto, int idUtente)
         {
-            var esistente = await _db.Recensioni.FirstOrDefaultAsync(r => r.IdUtente == dto.IdUtente && r.IdFilm == dto.IdFilm);
+            var esistente = await _db.Recensioni.FirstOrDefaultAsync(r => r.IdUtente == idUtente && r.IdFilm == dto.IdFilm);
             if (esistente != null) return null;
             var recensione = new Recensione
             {
-                IdUtente = dto.IdUtente,
+                IdUtente = idUtente,
                 IdFilm = dto.IdFilm,
                 Voto = dto.Voto,
                 Contenuto = dto.Contenuto,

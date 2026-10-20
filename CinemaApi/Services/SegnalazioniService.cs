@@ -66,7 +66,7 @@ namespace CinemaApi.Services
             var segnalazione = await _db.Segnalazioni.FindAsync(idSegnalazione);
             if ( segnalazione == null) return false;
             segnalazione.Stato = dto.Stato;
-            segnalazione.DataSegnalazione = DateTime.Now;
+            segnalazione.DataGestione = DateTime.Now;
             segnalazione.IdAdminGestore = idAdmin;
 
             await _db.SaveChangesAsync();

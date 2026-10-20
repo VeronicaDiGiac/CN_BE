@@ -32,6 +32,7 @@ namespace CinemaApi.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         [ProducesResponseType(typeof(object), 201)]
         [ProducesResponseType(409)]
         [ProducesResponseType(500)]
@@ -39,7 +40,8 @@ namespace CinemaApi.Controllers
         {
             try
             {
-                var recensione = await _recensioniService.CreateRecensione(dto);
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                var recensione = await _recensioniService.CreateRecensione(dto, idUtenteAutenticato);
                 if (recensione == null) return Conflict("Hai già lasciato una recensione per questo film");
                 return CreatedAtAction(nameof(Create), recensione);
             }

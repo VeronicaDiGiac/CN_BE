@@ -42,6 +42,18 @@
     };
 
             var estensione = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            // webp: "RIFF" nei byte 0-3, poi 4 byte di dimensione, poi "WEBP" nei byte 8-11
+            if (estensione == ".webp")
+            {
+                var intestazione = new byte[12];
+                using var streamWebp = file.OpenReadStream();
+                var letti = await streamWebp.ReadAsync(intestazione, 0, 12);
+                if (letti < 12) return false;
+                return intestazione.Take(4).SequenceEqual(new byte[] { 0x52, 0x49, 0x46, 0x46 })
+                    && intestazione.Skip(8).Take(4).SequenceEqual(new byte[] { 0x57, 0x45, 0x42, 0x50 });
+            }
+
             if (!firmeValide.ContainsKey(estensione)) return false;
 
             var firmaAttesa = firmeValide[estensione];

@@ -12,6 +12,8 @@ Il frontend è separato (HTML + JavaScript) e comunica con il backend tramite HT
 
 ## Come avviarlo
 1. Configura la connection string in `appsettings.json`
+   e la chiave JWT negli User Secrets (non va in `appsettings.json`):
+   `dotnet user-secrets set "Jwt:Key" "<chiave di almeno 32 caratteri>"`
 2. Esegui lo script SQL per creare e popolare il database
 3. Avvia il progetto con Visual Studio o `dotnet run`
 4. Swagger disponibile su `https://localhost:{porta}/swagger`

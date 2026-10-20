@@ -127,7 +127,12 @@ namespace CinemaApi.Services
             film.AnnoUscita = dto.AnnoUscita;
             film.Genere = dto.Genere;
             film.Attori = dto.Attori;
-            film.ImmagineUrl = dto.ImmagineUrl;
+            // Aggiorna l'immagine solo se inviata: altrimenti si perderebbe
+            // quella caricata con POST /api/film/{id}/immagine.
+            if (dto.ImmagineUrl != null)
+            {
+                film.ImmagineUrl = dto.ImmagineUrl;
+            }
             film.Descrizione = dto.Descrizione;
             await _db.SaveChangesAsync();
             return true;
