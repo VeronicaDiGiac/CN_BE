@@ -70,6 +70,21 @@ namespace CinemaApi.Services
             };
         }
 
+        // Ritorna null se l'utente non esiste, false se la password attuale è sbagliata,
+        // true se la password è stata cambiata.
+        public async Task<bool?> CambiaPassword(int idUtente, CambiaPasswordDto dto)
+        {
+            var utente = await _db.Utenti.FindAsync(idUtente);
+            if (utente == null) return null;
+
+            bool passwordCorretta = BCrypt.Net.BCrypt.Verify(dto.PasswordAttuale, utente.PasswordHash);
+            if (!passwordCorretta) return false;
+
+            utente.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NuovaPassword);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+
         // Metodo privato: solo questo service sa come si genera un token
         private string GeneraToken(Utente utente)
         {

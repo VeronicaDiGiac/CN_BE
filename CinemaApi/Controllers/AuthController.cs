@@ -1,7 +1,9 @@
 ﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CinemaApi.Controllers
 {
@@ -51,6 +53,33 @@ namespace CinemaApi.Controllers
             catch (Exception ex)
             {
                 // QUI: StatusCode 500 con ErrorResponseDto
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPut("password")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> CambiaPassword([FromBody] CambiaPasswordDto dto)
+        {
+            try
+            {
+                // Si può cambiare solo la PROPRIA password: l'id arriva dal token
+                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                if (dto.NuovaPassword == dto.PasswordAttuale)
+                    return BadRequest("La nuova password deve essere diversa da quella attuale");
+
+                var risultato = await _authService.CambiaPassword(idUtenteAutenticato, dto);
+                if (risultato == null) return NotFound();
+                // 400 e non 401: l'utente è autenticato, ha solo sbagliato la password attuale
+                if (risultato == false) return BadRequest("La password attuale non è corretta");
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
                 return StatusCode(500, ex.Message);
             }
         }
