@@ -34,9 +34,10 @@ namespace CinemaApi.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(PagedResultDto<Film>), 200)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber = 1, int pageSize = 20)
+        // ordinamento: recenti (predefinito), voto, titolo (Helpers.OrdinamentiCatalogo)
+        public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber = 1, int pageSize = 20, string? ordinamento = null)
         {
-            var risultato = await _filmService.GetFilm(titolo, regista, annoUscita, genere, attori, pageNumber, pageSize);
+            var risultato = await _filmService.GetFilm(titolo, regista, annoUscita, genere, attori, pageNumber, pageSize, ordinamento);
             return Ok(risultato);
         }
 

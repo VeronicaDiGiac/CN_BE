@@ -32,6 +32,25 @@ namespace CinemaApi.Helpers
         public const string RispostaCommento = "RispostaCommento";
     }
 
+    // Elenchi di film presi da TMDB per il catalogo (valori usati nell'URL: /api/tmdb/elenco/{categoria})
+    public static class CategorieTmdb
+    {
+        public const string AlCinema = "alcinema";
+        public const string Tendenze = "tendenze";
+        public const string Popolari = "popolari";
+        public const string InArrivo = "inarrivo";
+
+        public static readonly string[] Tutte = { AlCinema, Tendenze, Popolari, InArrivo };
+    }
+
+    // Ordinamenti dell'elenco del catalogo (GET /api/film?ordinamento=)
+    public static class OrdinamentiCatalogo
+    {
+        public const string Recenti = "recenti";
+        public const string Voto = "voto";
+        public const string Titolo = "titolo";
+    }
+
     public static class TipiContenuto
     {
         public const string Recensione = "Recensione";

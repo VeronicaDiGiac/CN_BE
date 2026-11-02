@@ -75,7 +75,7 @@ namespace CinemaApi.Services
         // (pageSize) = quanti elementi devo SALTARE prima di iniziare a prendere
         // quelli della pagina richiesta.
 
-        public async Task<PagedResultDto<Film>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize)
+        public async Task<PagedResultDto<Film>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize, string? ordinamento = null)
         {
             //Da Ricordare : la query costruita non è ancora eseguita, la uso due volte, una volta per contare il totale una volta per prendere la pagina specifica, se eseguissi ToListAsync non si potrebbe contare niente.
             var query = _db.Film
@@ -89,7 +89,18 @@ namespace CinemaApi.Services
 
             var totalCount = await query.CountAsync();
 
-            var items = await query
+            // Senza un ordine esplicito SQL Server restituisce le righe in ordine casuale:
+            // di default prima i film più recenti (anno di uscita, poi gli ultimi aggiunti)
+            var ordinata = ordinamento switch
+            {
+                OrdinamentiCatalogo.Voto => query
+                    .OrderByDescending(f => f.Recensioni!.Average(r => (double?)r.Voto) ?? 0)
+                    .ThenByDescending(f => f.Recensioni!.Count()),
+                OrdinamentiCatalogo.Titolo => query.OrderBy(f => f.Titolo),
+                _ => query.OrderByDescending(f => f.AnnoUscita ?? 0).ThenByDescending(f => f.IdFilm)
+            };
+
+            var items = await ordinata
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

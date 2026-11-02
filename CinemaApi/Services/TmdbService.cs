@@ -1,4 +1,5 @@
 using CinemaApi.DTOs.ResponseDto;
+using CinemaApi.Helpers;
 using Microsoft.Extensions.Caching.Memory;
 using System.Net;
 using System.Net.Http.Headers;
@@ -41,10 +42,23 @@ namespace CinemaApi.Services
             return ElencoFilm(url, $"tmdb:cerca:{testo.ToLowerInvariant()}:{pagina}:{anno}", TimeSpan.FromMinutes(10));
         }
 
+        // Elenchi per il catalogo (Helpers.CategorieTmdb). null se la categoria non esiste.
+        public Task<TmdbRicercaDto>? Elenco(string categoria, int pagina = 1) => categoria switch
+        {
+            CategorieTmdb.AlCinema => ElencoFilm($"movie/now_playing?language={Lingua}&region={Regione}&page={pagina}",
+                $"tmdb:alcinema:{pagina}", TimeSpan.FromHours(6)),
+            CategorieTmdb.Tendenze => ElencoFilm($"trending/movie/week?language={Lingua}&page={pagina}",
+                $"tmdb:tendenze:{pagina}", TimeSpan.FromHours(6)),
+            CategorieTmdb.Popolari => ElencoFilm($"movie/popular?language={Lingua}&region={Regione}&page={pagina}",
+                $"tmdb:popolari:{pagina}", TimeSpan.FromHours(6)),
+            CategorieTmdb.InArrivo => UsciteInArrivo(pagina),
+            _ => null
+        };
+
         // Prossime uscite nei cinema italiani, dalla più vicina.
         // TMDB include anche le riedizioni di film vecchi con la data originale (es. un film del 1968):
         // in "In arrivo" confonderebbero, quindi si tengono solo le prime uscite dall'ultima settimana in poi.
-        public async Task<TmdbRicercaDto> UsciteInArrivo(int pagina = 1)
+        private async Task<TmdbRicercaDto> UsciteInArrivo(int pagina)
         {
             var elenco = await ElencoFilm($"movie/upcoming?language={Lingua}&region={Regione}&page={pagina}",
                 $"tmdb:uscite:{pagina}", TimeSpan.FromHours(6));

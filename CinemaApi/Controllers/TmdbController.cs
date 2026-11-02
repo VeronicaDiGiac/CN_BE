@@ -43,15 +43,19 @@ namespace CinemaApi.Controllers
             return Ok(risultato);
         }
 
-        // Prossime uscite nei cinema italiani (pubblico)
-        [HttpGet("uscite")]
+        // Elenchi pubblici per il catalogo: alcinema, tendenze, popolari, inarrivo (Helpers.CategorieTmdb)
+        [HttpGet("elenco/{categoria}")]
         [ProducesResponseType(typeof(TmdbRicercaDto), 200)]
         [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         [ProducesResponseType(429)]
-        public async Task<IActionResult> Uscite(int pagina = 1)
+        public async Task<IActionResult> Elenco(string categoria, int pagina = 1)
         {
             if (pagina < 1 || pagina > 500) return BadRequest("Pagina non valida");
-            var risultato = await _tmdbService.UsciteInArrivo(pagina);
+            var richiesta = _tmdbService.Elenco(categoria.ToLowerInvariant(), pagina);
+            if (richiesta == null) return NotFound("Categoria sconosciuta");
+
+            var risultato = await richiesta;
             await SegnaGiaNelCatalogo(risultato);
             return Ok(risultato);
         }
