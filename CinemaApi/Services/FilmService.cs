@@ -1,5 +1,6 @@
 ﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
+using CinemaApi.Helpers;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
@@ -138,12 +139,22 @@ namespace CinemaApi.Services
             return true;
         }
 
+        // Eliminazione a cascata: sparisce il film con recensioni, commenti e preferiti.
         public async Task<bool> DeleteFilm(int id)
         {
             var film = await _db.Film.FindAsync(id);
             if (film == null) return false;
+
+            using var transazione = await _db.Database.BeginTransactionAsync();
+            var idRecensioni = await _db.Recensioni
+                .Where(r => r.IdFilm == id)
+                .Select(r => r.IdRecensione)
+                .ToListAsync();
+            await EliminazioneHelper.EliminaRecensioni(_db, idRecensioni);
+            await _db.Preferiti.Where(p => p.IdFilm == id).ExecuteDeleteAsync();
             _db.Film.Remove(film);
             await _db.SaveChangesAsync();
+            await transazione.CommitAsync();
             return true;
         }
 

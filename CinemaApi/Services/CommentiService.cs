@@ -1,5 +1,6 @@
 ﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
+using CinemaApi.Helpers;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -76,13 +77,26 @@ namespace CinemaApi.Services
             return true;
         }
 
+        public async Task<bool> RecensioneEsiste(int idRecensione)
+        {
+            return await _db.Recensioni.AnyAsync(r => r.IdRecensione == idRecensione);
+        }
+
+        // Una risposta deve stare sotto un commento esistente della STESSA recensione.
+        public async Task<bool> CommentoPadreValido(int idCommentoPadre, int idRecensione)
+        {
+            return await _db.Commenti.AnyAsync(c => c.IdCommento == idCommentoPadre && c.IdRecensione == idRecensione);
+        }
+
+        // Elimina il commento insieme a tutte le sue risposte (vedi EliminazioneHelper).
         public async Task<bool> DeleteCommento(int id)
         {
             var commento = await _db.Commenti.FindAsync(id);
             if (commento == null) return false;
 
-            _db.Commenti.Remove(commento);
-            await _db.SaveChangesAsync();
+            using var transazione = await _db.Database.BeginTransactionAsync();
+            await EliminazioneHelper.EliminaCommenti(_db, new List<int> { id });
+            await transazione.CommitAsync();
             return true;
         }
     }

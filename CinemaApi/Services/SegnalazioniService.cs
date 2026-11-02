@@ -44,6 +44,14 @@ namespace CinemaApi.Services
                 .ToListAsync();
         }
 
+        // TipoContenuto è già validato dal DTO: qui controllo che il contenuto esista davvero.
+        public async Task<bool> ContenutoEsiste(string tipoContenuto, int idContenuto)
+        {
+            if (tipoContenuto == "Recensione")
+                return await _db.Recensioni.AnyAsync(r => r.IdRecensione == idContenuto);
+            return await _db.Commenti.AnyAsync(c => c.IdCommento == idContenuto);
+        }
+
         public async Task<Segnalazione?> CreateSegnalazione(CreateSegnalazioneDto dto, int idUtente)
         {
             var segnalazione = new Segnalazione

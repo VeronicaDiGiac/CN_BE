@@ -186,6 +186,7 @@ namespace CinemaApi.Controllers
         [HttpPut("{id}/stato")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> UpdateStatoFilm(int id, [FromBody] UpdateStatoFilmDto dto)

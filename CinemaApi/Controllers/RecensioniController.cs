@@ -34,6 +34,7 @@ namespace CinemaApi.Controllers
         [HttpPost]
         [Authorize]
         [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(404)]
         [ProducesResponseType(409)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateRecensioneDto dto)
@@ -41,6 +42,7 @@ namespace CinemaApi.Controllers
             try
             {
                 var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                if (!await _recensioniService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
                 var recensione = await _recensioniService.CreateRecensione(dto, idUtenteAutenticato);
                 if (recensione == null) return Conflict("Hai già lasciato una recensione per questo film");
                 return CreatedAtAction(nameof(Create), recensione);

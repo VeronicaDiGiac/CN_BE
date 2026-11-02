@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Resources\" />
     <Folder Include="wwwroot\uploads\film\" />
     <Folder Include="wwwroot\uploads\avatar\" />
   </ItemGroup>

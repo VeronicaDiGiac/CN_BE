@@ -44,6 +44,11 @@ namespace CinemaApi.Services
                 .ToListAsync();
         }
 
+        public async Task<bool> UtenteEsiste(int idUtente)
+        {
+            return await _db.Utenti.AnyAsync(u => u.IdUtente == idUtente);
+        }
+
         public async Task<Follow?> CreateFollow(CreateFollowDto dto, int idFollower)
         {
             var esistente = await _db.Follow

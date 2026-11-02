@@ -1,5 +1,6 @@
 ﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
+using CinemaApi.Helpers;
 using CinemaApi.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -53,13 +54,42 @@ namespace CinemaApi.Services
             return profilo;
         }
 
+        // Eliminazione a cascata: recensioni, commenti, preferiti, follow e segnalazioni
+        // dell'utente. I film che ha proposto restano nel catalogo, senza proprietario.
         public async Task<bool> DeleteProfilo(int id)
         {
             var profilo = await _db.Utenti.FindAsync(id);
             if (profilo == null) return false;
 
+            using var transazione = await _db.Database.BeginTransactionAsync();
+
+            // Prima le recensioni (si portano via anche i commenti degli altri sotto di esse),
+            // poi i commenti che l'utente ha scritto sotto recensioni altrui.
+            var idRecensioni = await _db.Recensioni
+                .Where(r => r.IdUtente == id)
+                .Select(r => r.IdRecensione)
+                .ToListAsync();
+            await EliminazioneHelper.EliminaRecensioni(_db, idRecensioni);
+
+            var idCommenti = await _db.Commenti
+                .Where(c => c.IdUtente == id)
+                .Select(c => c.IdCommento)
+                .ToListAsync();
+            await EliminazioneHelper.EliminaCommenti(_db, idCommenti);
+
+            await _db.Preferiti.Where(p => p.IdUtente == id).ExecuteDeleteAsync();
+            await _db.Follow.Where(f => f.FollowerId == id || f.FollowingId == id).ExecuteDeleteAsync();
+            await _db.Segnalazioni.Where(s => s.IdUtente == id).ExecuteDeleteAsync();
+            await _db.Segnalazioni
+                .Where(s => s.IdAdminGestore == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.IdAdminGestore, (int?)null));
+            await _db.Film
+                .Where(f => f.IdUtente == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.IdUtente, (int?)null));
+
             _db.Utenti.Remove(profilo);
             await _db.SaveChangesAsync();
+            await transazione.CommitAsync();
             return true;
         }
 

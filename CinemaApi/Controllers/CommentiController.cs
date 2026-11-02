@@ -34,12 +34,17 @@ namespace CinemaApi.Controllers
         [HttpPost]
         [Authorize]
         [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateCommentoDto dto)
         {
             try
             {
                 var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                if (!await _commentiService.RecensioneEsiste(dto.IdRecensione)) return NotFound("Recensione non trovata");
+                if (dto.IdCommentoPadre != null && !await _commentiService.CommentoPadreValido(dto.IdCommentoPadre.Value, dto.IdRecensione))
+                    return BadRequest("Il commento a cui rispondi non esiste o appartiene a un'altra recensione");
                 var commento = await _commentiService.CreateCommento(dto, idUtenteAutenticato);
                 return CreatedAtAction(nameof(Create), commento);
             }

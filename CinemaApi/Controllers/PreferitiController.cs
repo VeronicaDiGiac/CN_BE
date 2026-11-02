@@ -32,6 +32,7 @@ namespace CinemaApi.Controllers
         [HttpPost]
         [Authorize]
         [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(404)]
         [ProducesResponseType(409)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreatePreferitoDto dto)
@@ -39,6 +40,7 @@ namespace CinemaApi.Controllers
             try
             {
                 var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                if (!await _preferitiService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
                 var preferito = await _preferitiService.CreatePreferito(dto, idUtenteAutenticato);
                 if (preferito == null) return Conflict("Film già presente nei preferiti");
                 return CreatedAtAction(nameof(Create), preferito);

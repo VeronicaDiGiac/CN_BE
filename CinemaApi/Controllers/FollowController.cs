@@ -17,6 +17,8 @@ namespace CinemaApi.Controllers
         [HttpPost]
         [Authorize]
         [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         [ProducesResponseType(409)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateFollowDto dto)
@@ -24,6 +26,8 @@ namespace CinemaApi.Controllers
             try
             {
                 var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                if (dto.FollowingId == idUtenteAutenticato) return BadRequest("Non puoi seguire te stesso");
+                if (!await _followService.UtenteEsiste(dto.FollowingId)) return NotFound("Utente non trovato");
                 var follow = await _followService.CreateFollow(dto, idUtenteAutenticato);
                 if (follow == null) return Conflict("Follow già creato");
                 return CreatedAtAction(nameof(Create), follow);

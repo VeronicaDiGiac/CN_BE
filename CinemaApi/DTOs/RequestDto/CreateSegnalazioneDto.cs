@@ -7,6 +7,7 @@ namespace CinemaApi.DTOs.RequestDto
         // "Recensione" o "Commento". Validato anche lato DB dal CHECK constraint.
         [Required]
         [MaxLength(20)]
+        [RegularExpression("^(Recensione|Commento)$", ErrorMessage = "TipoContenuto non valido: usa Recensione o Commento")]
         public string TipoContenuto { get; set; } = "";
 
         [Required]
