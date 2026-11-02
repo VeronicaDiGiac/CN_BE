@@ -48,7 +48,8 @@ namespace CinemaApi.Services
                     NumeroVisioni = _db.Visioni.Count(v => v.IdFilm == f.IdFilm && v.IdUtente == idUtenteAutenticato),
                     UltimaVisione = _db.Visioni
                         .Where(v => v.IdFilm == f.IdFilm && v.IdUtente == idUtenteAutenticato)
-                        .Max(v => (DateOnly?)v.DataVisione)
+                        .Max(v => (DateOnly?)v.DataVisione),
+                    NumeroListe = _db.ListeFilm.Count(lf => lf.IdFilm == f.IdFilm && lf.Lista!.IdUtente == idUtenteAutenticato)
                 })
                 .FirstOrDefaultAsync();
 

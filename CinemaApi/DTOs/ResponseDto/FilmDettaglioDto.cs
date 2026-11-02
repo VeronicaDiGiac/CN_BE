@@ -1,4 +1,4 @@
-﻿namespace CinemaApi.DTOs.ResponseDto
+namespace CinemaApi.DTOs.ResponseDto
 {
     public class FilmDettaglioDto
     {
@@ -26,5 +26,7 @@
         public bool InDaVedere { get; set; }
         public int NumeroVisioni { get; set; }
         public DateOnly? UltimaVisione { get; set; }
+        // In quante liste dell'utente c'è il film
+        public int NumeroListe { get; set; }
     }
 }
