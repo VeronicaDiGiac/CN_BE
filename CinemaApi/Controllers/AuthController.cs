@@ -3,6 +3,7 @@ using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace CinemaApi.Controllers
@@ -11,6 +12,9 @@ namespace CinemaApi.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
+        // Nome della policy di rate limiting registrata in Program.cs
+        public const string LimitePasswordDimenticata = "password-dimenticata";
+
         private readonly AuthService _authService;
         public AuthController(AuthService authService) { _authService = authService; }
 
@@ -59,7 +63,7 @@ namespace CinemaApi.Controllers
 
         [HttpPut("password")]
         [Authorize]
-        [ProducesResponseType(204)]
+        [ProducesResponseType(typeof(LoginResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
@@ -76,6 +80,51 @@ namespace CinemaApi.Controllers
                 if (risultato == null) return NotFound();
                 // 400 e non 401: l'utente è autenticato, ha solo sbagliato la password attuale
                 if (risultato == false) return BadRequest("La password attuale non è corretta");
+
+                // Il cambio password invalida tutti i token, compreso quello usato per questa richiesta:
+                // se ne restituisce uno nuovo per restare collegati su questo dispositivo
+                var sessione = await _authService.CreaSessione(idUtenteAutenticato);
+                return Ok(sessione);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPost("password-dimenticata")]
+        [EnableRateLimiting(LimitePasswordDimenticata)]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(429)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> PasswordDimenticata([FromBody] PasswordDimenticataDto dto)
+        {
+            try
+            {
+                await _authService.PasswordDimenticata(dto);
+                // Stessa risposta sia se l'email esiste sia se non esiste
+                // (il messaggio "Se l'email è registrata…" lo mostra il FE)
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpPost("reimposta-password")]
+        [EnableRateLimiting(LimitePasswordDimenticata)]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(429)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> ReimpostaPassword([FromBody] ReimpostaPasswordDto dto)
+        {
+            try
+            {
+                var risultato = await _authService.ReimpostaPassword(dto);
+                if (!risultato) return BadRequest("Il link non è valido o è scaduto. Richiedine uno nuovo");
                 return NoContent();
             }
             catch (Exception ex)

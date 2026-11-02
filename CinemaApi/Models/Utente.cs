@@ -12,6 +12,8 @@ namespace CinemaApi.Models
         public required string Ruolo { get; set; }
         public DateTime? DataDiRegistrazione { get; set; }
         public string? PasswordHash { get; set; }
+        // Ultimo cambio/reset password (UTC): i token emessi prima non valgono più
+        public DateTime? DataCambioPassword { get; set; }
         public string? Bio {  get; set; }
         public string? AvatarUrl { get; set; }
 

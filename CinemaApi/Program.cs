@@ -1,6 +1,9 @@
+using CinemaApi.Controllers;
 using CinemaApi.Models;
 using CinemaApi.Models;
 using CinemaApi.Services;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -62,6 +65,22 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UtentiService>();
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<SegnalazioniService>();
+builder.Services.AddScoped<EmailService>();
+
+// "Password dimenticata?": massimo 10 richieste ogni 15 minuti per indirizzo IP,
+// così nessuno può usare l'endpoint per riempire di mail la casella di qualcun altro
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(AuthController.LimitePasswordDimenticata, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "sconosciuto",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(15)
+            }));
+});
 
 // La chiave JWT non sta in appsettings.json: va negli User Secrets
 // (dotnet user-secrets set "Jwt:Key" "<chiave di almeno 32 caratteri>").
@@ -83,6 +102,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtKey))
         };
+
+        // Dopo un cambio o un reset della password i token emessi prima non valgono più
+        // (si scollegano tutti i dispositivi). Costa una query leggera per ogni richiesta autenticata.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var idUtente = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var versione = context.Principal?.FindFirst(AuthService.ClaimVersionePassword)?.Value;
+                var db = context.HttpContext.RequestServices.GetRequiredService<CinemaContext>();
+
+                if (!int.TryParse(idUtente, out var id) || !await AuthService.TokenAncoraValido(db, id, versione))
+                    context.Fail("Sessione non più valida: la password è stata cambiata");
+            }
+        };
     });
 
 var app = builder.Build();
@@ -102,6 +136,8 @@ app.UseAuthentication();
 app.UseStaticFiles();
 
 app.UseAuthorization();
+
+app.UseRateLimiter();
 
 app.MapControllers();
 

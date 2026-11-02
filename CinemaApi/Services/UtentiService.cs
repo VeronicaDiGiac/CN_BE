@@ -80,6 +80,7 @@ namespace CinemaApi.Services
             await _db.Preferiti.Where(p => p.IdUtente == id).ExecuteDeleteAsync();
             await _db.Follow.Where(f => f.FollowerId == id || f.FollowingId == id).ExecuteDeleteAsync();
             await _db.Segnalazioni.Where(s => s.IdUtente == id).ExecuteDeleteAsync();
+            await _db.PasswordReset.Where(p => p.IdUtente == id).ExecuteDeleteAsync();
             await _db.Segnalazioni
                 .Where(s => s.IdAdminGestore == id)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.IdAdminGestore, (int?)null));

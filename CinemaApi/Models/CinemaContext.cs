@@ -18,6 +18,8 @@ namespace CinemaApi.Models
 
         public DbSet<Segnalazione> Segnalazioni { get; set; }
 
+        public DbSet<PasswordReset> PasswordReset { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
