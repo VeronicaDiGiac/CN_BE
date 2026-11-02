@@ -20,6 +20,10 @@ namespace CinemaApi.Models
 
         public DbSet<PasswordReset> PasswordReset { get; set; }
 
+        public DbSet<Visione> Visioni { get; set; }
+
+        public DbSet<DaVedere> DaVedere { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

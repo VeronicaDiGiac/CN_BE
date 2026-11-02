@@ -17,5 +17,13 @@
         // true se l'utente autenticato che chiama questo endpoint ha già
         // recensito questo film. Resta sempre false per chi non è loggato.
         public bool GiaRecensito { get; set; }
+
+        // Quanti utenti diversi hanno segnato il film come visto
+        public int NumeroSpettatori { get; set; }
+
+        // Stato personale dell'utente autenticato (false/0/null per chi non è loggato)
+        public bool InDaVedere { get; set; }
+        public int NumeroVisioni { get; set; }
+        public DateOnly? UltimaVisione { get; set; }
     }
 }

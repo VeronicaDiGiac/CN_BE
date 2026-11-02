@@ -25,7 +25,7 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateSegnalazioneDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = User.IdUtente();
             if (!await _segnalazioniService.ContenutoEsiste(dto.TipoContenuto, dto.IdContenuto)) return NotFound("Contenuto segnalato non trovato");
             var segnalazione = await _segnalazioniService.CreateSegnalazione(dto, idUtenteAutenticato);
             return CreatedAtAction(nameof(Create), segnalazione);
@@ -48,7 +48,7 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> UpdateStato(int id, [FromBody] UpdateStatoSegnalazioneDto dto)
         {
-            var idAdmin = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idAdmin = User.IdUtente();
             var aggiornata = await _segnalazioniService.UpdateStato(id, dto, idAdmin);
             if (!aggiornata) return NotFound();
             return NoContent();

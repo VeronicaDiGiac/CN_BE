@@ -34,7 +34,7 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> UpdateProfilo(int id, [FromBody] UpdateProfiloDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = User.IdUtente();
 
             // Niente AutorizzazioneHelper qui: per il profilo personale
             // SOLO il proprietario può modificare, nessuna eccezione Admin.
@@ -53,7 +53,7 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> DeleteProfilo(int id)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = User.IdUtente();
 
             // Stessa regola di UpdateProfilo: solo il proprietario,
             // nessuna eccezione Admin (per ora, vedi nota in TODO).
@@ -76,8 +76,8 @@ namespace CinemaApi.Controllers
                 return BadRequest(errore);
             if (!await FileValidationHelper.HaFirmaBinariaValida(file))
                 return BadRequest("Il file non sembra essere un'immagine valida");
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo();
             var utente = await _utentiService.GetProfilo(id);
             if (utente == null) return NotFound();
             //Controllo: Per ora l'admin non può fare upload dell'avatar al posto dell'utente 

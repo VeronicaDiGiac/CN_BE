@@ -32,7 +32,7 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateCommentoDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = User.IdUtente();
             if (!await _commentiService.RecensioneEsiste(dto.IdRecensione)) return NotFound("Recensione non trovata");
             if (dto.IdCommentoPadre != null && !await _commentiService.CommentoPadreValido(dto.IdCommentoPadre.Value, dto.IdRecensione))
                 return BadRequest("Il commento a cui rispondi non esiste o appartiene a un'altra recensione");
@@ -47,8 +47,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateCommentoDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo();
             var commenti = await _commentiService.GetCommentoById(id);
             if (commenti == null) return NotFound();
             if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
@@ -63,8 +63,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Delete(int id)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo();
             var commenti = await _commentiService.GetCommentoById(id);
             if (commenti == null) return NotFound();
             if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();

@@ -32,7 +32,7 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateRecensioneDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = User.IdUtente();
             if (!await _recensioniService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
             var recensione = await _recensioniService.CreateRecensione(dto, idUtenteAutenticato);
             if (recensione == null) return Conflict("Hai già lasciato una recensione per questo film");
@@ -47,8 +47,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateRecensioneDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value; 
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo(); 
             var recensione = await _recensioniService.GetRecensioneById(id);
             if (recensione == null) return NotFound();
             //Sostituisco il forbidden con il controllo Admin che ho inserito negli helpers
@@ -66,8 +66,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Delete(int id)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo();
             var recensione = await _recensioniService.GetRecensioneById(id);
             if (recensione == null) return NotFound();
             //if (recensione.IdUtente != idUtenteAutenticato) return Forbid();

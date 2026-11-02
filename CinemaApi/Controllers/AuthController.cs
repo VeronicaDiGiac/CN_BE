@@ -1,3 +1,4 @@
+using CinemaApi.Helpers;
 using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Services;
@@ -53,7 +54,7 @@ namespace CinemaApi.Controllers
         public async Task<IActionResult> CambiaPassword([FromBody] CambiaPasswordDto dto)
         {
             // Si può cambiare solo la PROPRIA password: l'id arriva dal token
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = User.IdUtente();
             if (dto.NuovaPassword == dto.PasswordAttuale)
                 return BadRequest("La nuova password deve essere diversa da quella attuale");
 

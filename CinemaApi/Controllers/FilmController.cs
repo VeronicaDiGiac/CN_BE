@@ -24,16 +24,9 @@ namespace CinemaApi.Controllers
         {
             // Autenticazione OPZIONALE: niente [Authorize] qui, l'endpoint
             // resta pubblico. Se però arriva un token valido, lo leggiamo
-            // comunque per popolare GiaRecensito; altrimenti resta null
-            // e GiaRecensito sarà sempre false.
-            int? idUtenteAutenticato = null;
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (claim != null)
-            {
-                idUtenteAutenticato = int.Parse(claim.Value);
-            }
-
-            var film = await _filmService.GetFilmDettaglio(id, idUtenteAutenticato);
+            // comunque per lo stato personale (GiaRecensito, InDaVedere, visioni);
+            // altrimenti resta null e lo stato personale è vuoto.
+            var film = await _filmService.GetFilmDettaglio(id, User.IdUtenteOpzionale());
             if (film == null) return NotFound();
             return Ok(film);
         }
@@ -66,8 +59,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateFilmDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo();
             var film = await _filmService.CreateFilm(dto, idUtenteAutenticato, ruolo);
             if (film == null) return Conflict("Esiste già un film con questo titolo");
             return CreatedAtAction(nameof(Create), film);
@@ -80,8 +73,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateFilmDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo();
             var film = await _filmService.GetFilmById(id);
             if (film == null) return NotFound();
             if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
@@ -99,8 +92,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Delete(int id)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo();
             var film = await _filmService.GetFilmById(id);
             if (film == null) return NotFound();
             if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
@@ -122,8 +115,8 @@ namespace CinemaApi.Controllers
                 return BadRequest(errore);
             if (!await FileValidationHelper.HaFirmaBinariaValida(file))
                 return BadRequest("Il file non sembra essere un'immagine valida");
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var idUtenteAutenticato = User.IdUtente();
+            var ruolo = User.Ruolo();
             var film = await _filmService.GetFilmById(id);
             if (film == null) return NotFound();
             if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();

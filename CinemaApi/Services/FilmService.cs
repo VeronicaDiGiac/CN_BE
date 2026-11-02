@@ -40,7 +40,14 @@ namespace CinemaApi.Services
                     NumeroRecensioni = f.Recensioni.Count(),
                     TmdbId = f.TmdbId,
                     GiaRecensito = idUtenteAutenticato != null &&
-                                    f.Recensioni.Any(r => r.IdUtente == idUtenteAutenticato)
+                                    f.Recensioni.Any(r => r.IdUtente == idUtenteAutenticato),
+                    NumeroSpettatori = _db.Visioni.Where(v => v.IdFilm == f.IdFilm).Select(v => v.IdUtente).Distinct().Count(),
+                    InDaVedere = idUtenteAutenticato != null &&
+                                 _db.DaVedere.Any(d => d.IdFilm == f.IdFilm && d.IdUtente == idUtenteAutenticato),
+                    NumeroVisioni = _db.Visioni.Count(v => v.IdFilm == f.IdFilm && v.IdUtente == idUtenteAutenticato),
+                    UltimaVisione = _db.Visioni
+                        .Where(v => v.IdFilm == f.IdFilm && v.IdUtente == idUtenteAutenticato)
+                        .Max(v => (DateOnly?)v.DataVisione)
                 })
                 .FirstOrDefaultAsync();
 
@@ -155,6 +162,8 @@ namespace CinemaApi.Services
                 .ToListAsync();
             await EliminazioneHelper.EliminaRecensioni(_db, idRecensioni);
             await _db.Preferiti.Where(p => p.IdFilm == id).ExecuteDeleteAsync();
+            await _db.Visioni.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
+            await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
             _db.Film.Remove(film);
             await _db.SaveChangesAsync();
             await transazione.CommitAsync();

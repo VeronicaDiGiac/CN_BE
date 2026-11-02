@@ -1,3 +1,4 @@
+using CinemaApi.Helpers;
 using CinemaApi.DTOs.RequestDto;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -30,7 +31,7 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreatePreferitoDto dto)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = User.IdUtente();
             if (!await _preferitiService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
             var preferito = await _preferitiService.CreatePreferito(dto, idUtenteAutenticato);
             if (preferito == null) return Conflict("Film già presente nei preferiti");
@@ -45,7 +46,7 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Delete(int id)
         {
-            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = User.IdUtente();
 
             var preferito = await _preferitiService.GetPreferitoById(id);
             if (preferito == null) return NotFound();
