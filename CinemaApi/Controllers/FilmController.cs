@@ -55,14 +55,26 @@ namespace CinemaApi.Controllers
         [HttpPost]
         [Authorize]
         [ProducesResponseType(typeof(CinemaApi.Models.Film), 201)]
-        [ProducesResponseType(409)]
+        [ProducesResponseType(typeof(FilmDoppioneDto), 409)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateFilmDto dto)
         {
             var idUtenteAutenticato = User.IdUtente();
             var ruolo = User.Ruolo();
-            var film = await _filmService.CreateFilm(dto, idUtenteAutenticato, ruolo);
-            if (film == null) return Conflict("Esiste già un film con questo titolo");
+            var (film, doppione) = await _filmService.CreateFilm(dto, idUtenteAutenticato, ruolo);
+            if (doppione != null)
+            {
+                return Conflict(new FilmDoppioneDto
+                {
+                    Messaggio = doppione.Stato == StatiFilm.Approvato
+                        ? "Questo film è già nel catalogo"
+                        : "Questo film è già stato proposto ed è in attesa di approvazione",
+                    IdFilm = doppione.IdFilm,
+                    Titolo = doppione.Titolo,
+                    AnnoUscita = doppione.AnnoUscita,
+                    Stato = doppione.Stato
+                });
+            }
             return CreatedAtAction(nameof(Create), film);
         }
 

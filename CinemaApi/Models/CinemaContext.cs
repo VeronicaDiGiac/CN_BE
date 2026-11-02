@@ -1,4 +1,5 @@
-﻿using CinemaApi.Models;
+﻿using CinemaApi.Helpers;
+using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 
@@ -7,6 +8,29 @@ namespace CinemaApi.Models
     public class CinemaContext : DbContext
     {
         public CinemaContext(DbContextOptions<CinemaContext> options) : base(options) { }
+
+        // Ogni film salvato (nuovo o modificato) ha sempre la chiave del titolo aggiornata,
+        // qualunque sia il punto del codice che lo salva
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            AggiornaChiaviTitolo();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        public override int SaveChanges()
+        {
+            AggiornaChiaviTitolo();
+            return base.SaveChanges();
+        }
+
+        private void AggiornaChiaviTitolo()
+        {
+            foreach (var voce in ChangeTracker.Entries<Film>())
+            {
+                if (voce.State is EntityState.Added or EntityState.Modified)
+                    voce.Entity.TitoloChiave = voce.Entity.Titolo == null ? null : TitoliHelper.Chiave(voce.Entity.Titolo);
+            }
+        }
 
         public DbSet<Utente> Utenti { get; set; }
         public DbSet<Film> Film { get; set; }

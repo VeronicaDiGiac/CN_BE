@@ -25,6 +25,10 @@ namespace CinemaApi.Models
         // Id del film su TMDB: null per i film inseriti a mano
         public int? TmdbId { get; set; }
 
+        // Titolo normalizzato per riconoscere i doppioni (TitoliHelper.Chiave).
+        // Non va impostato a mano: lo calcola CinemaContext a ogni salvataggio.
+        public string? TitoloChiave { get; set; }
+
         // Navigation properties
         public ICollection<Recensione>? Recensioni { get; set; }
         public ICollection<Preferito>? Preferiti { get; set; }

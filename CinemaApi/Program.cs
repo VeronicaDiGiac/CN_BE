@@ -148,6 +148,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+// Film salvati prima della colonna TitoloChiave (Database/FilmTitoloChiave.sql): la si calcola
+// una volta sola. Se è già tutto a posto è una sola query, quindi resta sicuro a ogni avvio.
+using (var scope = app.Services.CreateScope())
+{
+    await scope.ServiceProvider.GetRequiredService<FilmService>().CompletaChiaviTitolo();
+}
+
 app.UseCors(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 
 // Dopo UseCors: anche le risposte di errore devono avere gli header CORS,

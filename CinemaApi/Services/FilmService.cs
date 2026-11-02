@@ -102,14 +102,12 @@ namespace CinemaApi.Services
             };
         }
 
-        public async Task<Film?> CreateFilm(CreateFilmDto dto, int idUtente, string ruolo)
+        // Se il film c'è già (approvato o in attesa) non si crea un doppione:
+        // si restituisce quello esistente in "Doppione" e "Film" resta null
+        public async Task<(Film? Film, Film? Doppione)> CreateFilm(CreateFilmDto dto, int idUtente, string ruolo)
         {
-            //Controllo se esiste lo stesso film prima dell'aggiunta 
-            var esistente = await _db.Film.FirstOrDefaultAsync(f =>
-            f.Titolo == dto.Titolo &&
-            f.Regista == dto.Regista &&
-            f.AnnoUscita == dto.AnnoUscita);
-            if (esistente != null) return null;
+            var esistente = await TrovaFilmSimile(new[] { dto.Titolo }, dto.AnnoUscita);
+            if (esistente != null) return (null, esistente);
 
             var film = new Film
             {
@@ -126,7 +124,7 @@ namespace CinemaApi.Services
             };
             _db.Film.Add(film);
             await _db.SaveChangesAsync();
-            return film;
+            return (film, null);
         }
 
         public async Task<bool> UpdateFilm(int id, CreateFilmDto dto)
@@ -309,28 +307,37 @@ namespace CinemaApi.Services
         // Cerca un film inserito a mano che sia lo stesso film TMDB anche se il titolo è scritto
         // in modo diverso ("Dune: Parte Due" / "Dune - Parte due") o è quello originale
         // ("Poor Things" / "Povere creature!"). L'anno deve coincidere, se il film manuale ce l'ha.
-        private async Task<Film?> TrovaGemelloManuale(FilmTmdb dati)
+        private Task<Film?> TrovaGemelloManuale(FilmTmdb dati) =>
+            TrovaFilmSimile(new[] { dati.Titolo, dati.TitoloOriginale }, dati.AnnoUscita, soloSenzaTmdb: true);
+
+        // Film già presente con lo stesso titolo (a meno di maiuscole, accenti e punteggiatura,
+        // vedi TitoliHelper.Chiave) e un anno compatibile: uguale, oppure mancante in uno dei due.
+        // I film rifiutati non contano: si possono riproporre. Ricerca indicizzata su TitoloChiave.
+        private Task<Film?> TrovaFilmSimile(IEnumerable<string?> titoli, int? anno, bool soloSenzaTmdb = false)
         {
-            var titoliTmdb = new[] { dati.Titolo, dati.TitoloOriginale }
+            var chiavi = titoli
                 .Where(t => !string.IsNullOrWhiteSpace(t))
-                .Select(t => TitoloNormalizzato(t!))
-                .ToHashSet();
+                .Select(t => TitoliHelper.Chiave(t!))
+                .Distinct()
+                .ToList();
 
-            // Pochi candidati (solo film manuali dello stesso anno o senza anno): il confronto si fa in memoria
-            var candidati = await _db.Film
-                .Where(f => f.TmdbId == null && (f.AnnoUscita == null || f.AnnoUscita == dati.AnnoUscita))
-                .ToListAsync();
-
-            return candidati.FirstOrDefault(f => f.Titolo != null && titoliTmdb.Contains(TitoloNormalizzato(f.Titolo)));
+            return _db.Film
+                .Where(f => f.TitoloChiave != null && chiavi.Contains(f.TitoloChiave))
+                .Where(f => f.Stato != StatiFilm.Rifiutato)
+                .Where(f => !soloSenzaTmdb || f.TmdbId == null)
+                .Where(f => anno == null || f.AnnoUscita == null || f.AnnoUscita == anno)
+                // A parità, meglio indicare la scheda approvata che una in attesa
+                .OrderBy(f => f.Stato == StatiFilm.Approvato ? 0 : 1)
+                .FirstOrDefaultAsync();
         }
 
-        // Solo lettere e cifre, minuscole e senza accenti: "Dune: Parte Due" -> "dunepartedue"
-        private static string TitoloNormalizzato(string titolo)
+        // Chiave del titolo per i film salvati prima che esistesse la colonna (idempotente)
+        public async Task CompletaChiaviTitolo()
         {
-            var scomposto = titolo.Normalize(NormalizationForm.FormD);
-            var lettere = scomposto.Where(c =>
-                CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark && char.IsLetterOrDigit(c));
-            return new string(lettere.ToArray()).ToLowerInvariant();
+            var senzaChiave = await _db.Film.Where(f => f.TitoloChiave == null && f.Titolo != null).ToListAsync();
+            if (senzaChiave.Count == 0) return;
+            foreach (var film in senzaChiave) _db.Entry(film).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
         }
 
         // TmdbId -> IdFilm per i film TMDB già presenti (e visibili) nel catalogo
