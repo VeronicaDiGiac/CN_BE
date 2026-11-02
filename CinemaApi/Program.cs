@@ -1,5 +1,5 @@
 using CinemaApi.Controllers;
-using CinemaApi.Models;
+using CinemaApi.Helpers;
 using CinemaApi.Models;
 using CinemaApi.Services;
 using System.Security.Claims;
@@ -66,6 +66,10 @@ builder.Services.AddScoped<UtentiService>();
 builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<SegnalazioniService>();
 builder.Services.AddScoped<EmailService>();
+
+// Errori imprevisti: gestiti tutti in Helpers/GestoreErrori.cs (niente try/catch nei controller)
+builder.Services.AddExceptionHandler<GestoreErrori>();
+builder.Services.AddProblemDetails();
 
 // TMDB: HttpClient dedicato + cache in memoria per non ripetere le stesse chiamate
 builder.Services.AddMemoryCache();
@@ -140,6 +144,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 var app = builder.Build();
 
 app.UseCors(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+
+// Dopo UseCors: anche le risposte di errore devono avere gli header CORS,
+// altrimenti il browser nasconde al FE lo status 500
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

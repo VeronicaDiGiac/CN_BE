@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.Helpers;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -20,15 +20,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Get(int? idFilm, int? idUtente)
         {
-            try
-            {
-                var recensioni = await _recensioniService.GetRecensioni(idFilm, idUtente);
-                return Ok(recensioni);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var recensioni = await _recensioniService.GetRecensioni(idFilm, idUtente);
+            return Ok(recensioni);
         }
 
         [HttpPost]
@@ -39,18 +32,11 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateRecensioneDto dto)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                if (!await _recensioniService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
-                var recensione = await _recensioniService.CreateRecensione(dto, idUtenteAutenticato);
-                if (recensione == null) return Conflict("Hai già lasciato una recensione per questo film");
-                return CreatedAtAction(nameof(Create), recensione);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            if (!await _recensioniService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
+            var recensione = await _recensioniService.CreateRecensione(dto, idUtenteAutenticato);
+            if (recensione == null) return Conflict("Hai già lasciato una recensione per questo film");
+            return CreatedAtAction(nameof(Create), recensione);
         }
 
         [HttpPut("{id}")]
@@ -61,22 +47,15 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateRecensioneDto dto)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                var ruolo = User.FindFirst(ClaimTypes.Role).Value; 
-                var recensione = await _recensioniService.GetRecensioneById(id);
-                if (recensione == null) return NotFound();
-                //Sostituisco il forbidden con il controllo Admin che ho inserito negli helpers
-                //if (recensione.IdUtente != idUtenteAutenticato) return Forbid();
-                if (!AutorizzazioneHelper.PuoModificare(recensione.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
-                await _recensioniService.UpdateRecensione(id, dto);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var ruolo = User.FindFirst(ClaimTypes.Role).Value; 
+            var recensione = await _recensioniService.GetRecensioneById(id);
+            if (recensione == null) return NotFound();
+            //Sostituisco il forbidden con il controllo Admin che ho inserito negli helpers
+            //if (recensione.IdUtente != idUtenteAutenticato) return Forbid();
+            if (!AutorizzazioneHelper.PuoModificare(recensione.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+            await _recensioniService.UpdateRecensione(id, dto);
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
@@ -87,22 +66,15 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Delete(int id)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
-                var recensione = await _recensioniService.GetRecensioneById(id);
-                if (recensione == null) return NotFound();
-                //if (recensione.IdUtente != idUtenteAutenticato) return Forbid();
-                if (!AutorizzazioneHelper.PuoModificare(recensione.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
-                var eliminata = await _recensioniService.DeleteRecensione(id);
-                if (!eliminata) return NotFound();
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var recensione = await _recensioniService.GetRecensioneById(id);
+            if (recensione == null) return NotFound();
+            //if (recensione.IdUtente != idUtenteAutenticato) return Forbid();
+            if (!AutorizzazioneHelper.PuoModificare(recensione.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+            var eliminata = await _recensioniService.DeleteRecensione(id);
+            if (!eliminata) return NotFound();
+            return NoContent();
         }
     }
 }

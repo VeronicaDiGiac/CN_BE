@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using CinemaApi.Helpers;
+using Microsoft.AspNetCore.Mvc;
 using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Services;
@@ -24,54 +25,33 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateSegnalazioneDto dto)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                if (!await _segnalazioniService.ContenutoEsiste(dto.TipoContenuto, dto.IdContenuto)) return NotFound("Contenuto segnalato non trovato");
-                var segnalazione = await _segnalazioniService.CreateSegnalazione(dto, idUtenteAutenticato);
-                return CreatedAtAction(nameof(Create), segnalazione);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            if (!await _segnalazioniService.ContenutoEsiste(dto.TipoContenuto, dto.IdContenuto)) return NotFound("Contenuto segnalato non trovato");
+            var segnalazione = await _segnalazioniService.CreateSegnalazione(dto, idUtenteAutenticato);
+            return CreatedAtAction(nameof(Create), segnalazione);
         }
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Ruoli.Admin)]
         [ProducesResponseType(typeof(List<object>), 200)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Get()
         {
-            try
-            {
-                var segnalazioni = await _segnalazioniService.GetSegnalazioni();
-                return Ok(segnalazioni);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var segnalazioni = await _segnalazioniService.GetSegnalazioni();
+            return Ok(segnalazioni);
         }
 
         [HttpPut("{id}/stato")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Ruoli.Admin)]
         [ProducesResponseType(204)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> UpdateStato(int id, [FromBody] UpdateStatoSegnalazioneDto dto)
         {
-            try
-            {
-                var idAdmin = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                var aggiornata = await _segnalazioniService.UpdateStato(id, dto, idAdmin);
-                if (!aggiornata) return NotFound();
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idAdmin = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var aggiornata = await _segnalazioniService.UpdateStato(id, dto, idAdmin);
+            if (!aggiornata) return NotFound();
+            return NoContent();
         }
 
 

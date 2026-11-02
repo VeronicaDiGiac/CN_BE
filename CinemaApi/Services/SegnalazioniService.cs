@@ -1,4 +1,5 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.Helpers;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,7 @@ namespace CinemaApi.Services
                     IdAdminGestore = s.IdAdminGestore,
 
                     // idFilm ricavato a seconda del tipo di contenuto segnalato
-                    IdFilm = s.TipoContenuto == "Recensione"
+                    IdFilm = s.TipoContenuto == TipiContenuto.Recensione
                         ? _db.Recensioni
                             .Where(r => r.IdRecensione == s.IdContenuto)
                             .Select(r => (int?)r.IdFilm)
@@ -47,7 +48,7 @@ namespace CinemaApi.Services
         // TipoContenuto è già validato dal DTO: qui controllo che il contenuto esista davvero.
         public async Task<bool> ContenutoEsiste(string tipoContenuto, int idContenuto)
         {
-            if (tipoContenuto == "Recensione")
+            if (tipoContenuto == TipiContenuto.Recensione)
                 return await _db.Recensioni.AnyAsync(r => r.IdRecensione == idContenuto);
             return await _db.Commenti.AnyAsync(c => c.IdCommento == idContenuto);
         }

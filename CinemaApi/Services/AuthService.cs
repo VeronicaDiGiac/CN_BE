@@ -1,4 +1,5 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.Helpers;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
@@ -66,7 +67,7 @@ namespace CinemaApi.Services
                 UserName = dto.UserName,
                 Email = dto.Email,
                 PasswordHash = passwordHash,
-                Ruolo = "User",
+                Ruolo = Ruoli.User,
                 DataDiRegistrazione = DateTime.Now
             };
             _db.Utenti.Add(utente);

@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Helpers;
 using CinemaApi.Services;
@@ -20,15 +20,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Get(int? idRecensione, int? idUtente)
         {
-            try
-            {
-                var commenti = await _commentiService.GetCommenti(idRecensione, idUtente);
-                return Ok(commenti);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var commenti = await _commentiService.GetCommenti(idRecensione, idUtente);
+            return Ok(commenti);
         }
 
         [HttpPost]
@@ -39,19 +32,12 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateCommentoDto dto)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                if (!await _commentiService.RecensioneEsiste(dto.IdRecensione)) return NotFound("Recensione non trovata");
-                if (dto.IdCommentoPadre != null && !await _commentiService.CommentoPadreValido(dto.IdCommentoPadre.Value, dto.IdRecensione))
-                    return BadRequest("Il commento a cui rispondi non esiste o appartiene a un'altra recensione");
-                var commento = await _commentiService.CreateCommento(dto, idUtenteAutenticato);
-                return CreatedAtAction(nameof(Create), commento);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            if (!await _commentiService.RecensioneEsiste(dto.IdRecensione)) return NotFound("Recensione non trovata");
+            if (dto.IdCommentoPadre != null && !await _commentiService.CommentoPadreValido(dto.IdCommentoPadre.Value, dto.IdRecensione))
+                return BadRequest("Il commento a cui rispondi non esiste o appartiene a un'altra recensione");
+            var commento = await _commentiService.CreateCommento(dto, idUtenteAutenticato);
+            return CreatedAtAction(nameof(Create), commento);
         }
 
         [HttpPut("{id}")]
@@ -61,20 +47,13 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Update(int id, [FromBody] CreateCommentoDto dto)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
-                var commenti = await _commentiService.GetCommentoById(id);
-                if (commenti == null) return NotFound();
-                if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
-                var aggiornato = await _commentiService.UpdateCommento(id, dto);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var commenti = await _commentiService.GetCommentoById(id);
+            if (commenti == null) return NotFound();
+            if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+            var aggiornato = await _commentiService.UpdateCommento(id, dto);
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
@@ -84,21 +63,14 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Delete(int id)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                var ruolo = User.FindFirst(ClaimTypes.Role).Value;
-                var commenti = await _commentiService.GetCommentoById(id);
-                if (commenti == null) return NotFound();
-                if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
-                var eliminato = await _commentiService.DeleteCommento(id);
-                if (!eliminato) return NotFound();
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var ruolo = User.FindFirst(ClaimTypes.Role).Value;
+            var commenti = await _commentiService.GetCommentoById(id);
+            if (commenti == null) return NotFound();
+            if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+            var eliminato = await _commentiService.DeleteCommento(id);
+            if (!eliminato) return NotFound();
+            return NoContent();
         }
     }
 }

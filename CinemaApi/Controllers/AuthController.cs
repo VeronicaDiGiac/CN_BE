@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -24,20 +24,11 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            try
-            {
-                var risultato = await _authService.Login(dto);
-                // QUI: Unauthorized con ErrorResponseDto
-                // (StatusCode = 401, Messaggio = "Email o password non corretti")
-                if (risultato == null) return Unauthorized();
-                return Ok(risultato);
-            }
-            catch (Exception ex)
-            {
-                // QUI: StatusCode 500 con ErrorResponseDto
-                // (Messaggio generico per l'utente, ex.Message eventualmente in Dettaglio)
-                return StatusCode(500, ex.Message);
-            }
+            var risultato = await _authService.Login(dto);
+            // QUI: Unauthorized con ErrorResponseDto
+            // (StatusCode = 401, Messaggio = "Email o password non corretti")
+            if (risultato == null) return Unauthorized();
+            return Ok(risultato);
         }
 
         [HttpPost("register")]
@@ -46,19 +37,11 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            try
-            {
-                var risultato = await _authService.Register(dto);
-                // QUI: BadRequest con ErrorResponseDto
-                // (StatusCode = 400, Messaggio = "Email già registrata")
-                if (risultato == null) return BadRequest("Email già registrata");
-                return Ok(risultato);
-            }
-            catch (Exception ex)
-            {
-                // QUI: StatusCode 500 con ErrorResponseDto
-                return StatusCode(500, ex.Message);
-            }
+            var risultato = await _authService.Register(dto);
+            // QUI: BadRequest con ErrorResponseDto
+            // (StatusCode = 400, Messaggio = "Email già registrata")
+            if (risultato == null) return BadRequest("Email già registrata");
+            return Ok(risultato);
         }
 
         [HttpPut("password")]
@@ -69,27 +52,20 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> CambiaPassword([FromBody] CambiaPasswordDto dto)
         {
-            try
-            {
-                // Si può cambiare solo la PROPRIA password: l'id arriva dal token
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                if (dto.NuovaPassword == dto.PasswordAttuale)
-                    return BadRequest("La nuova password deve essere diversa da quella attuale");
+            // Si può cambiare solo la PROPRIA password: l'id arriva dal token
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            if (dto.NuovaPassword == dto.PasswordAttuale)
+                return BadRequest("La nuova password deve essere diversa da quella attuale");
 
-                var risultato = await _authService.CambiaPassword(idUtenteAutenticato, dto);
-                if (risultato == null) return NotFound();
-                // 400 e non 401: l'utente è autenticato, ha solo sbagliato la password attuale
-                if (risultato == false) return BadRequest("La password attuale non è corretta");
+            var risultato = await _authService.CambiaPassword(idUtenteAutenticato, dto);
+            if (risultato == null) return NotFound();
+            // 400 e non 401: l'utente è autenticato, ha solo sbagliato la password attuale
+            if (risultato == false) return BadRequest("La password attuale non è corretta");
 
-                // Il cambio password invalida tutti i token, compreso quello usato per questa richiesta:
-                // se ne restituisce uno nuovo per restare collegati su questo dispositivo
-                var sessione = await _authService.CreaSessione(idUtenteAutenticato);
-                return Ok(sessione);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            // Il cambio password invalida tutti i token, compreso quello usato per questa richiesta:
+            // se ne restituisce uno nuovo per restare collegati su questo dispositivo
+            var sessione = await _authService.CreaSessione(idUtenteAutenticato);
+            return Ok(sessione);
         }
 
         [HttpPost("password-dimenticata")]
@@ -100,17 +76,10 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> PasswordDimenticata([FromBody] PasswordDimenticataDto dto)
         {
-            try
-            {
-                await _authService.PasswordDimenticata(dto);
-                // Stessa risposta sia se l'email esiste sia se non esiste
-                // (il messaggio "Se l'email è registrata…" lo mostra il FE)
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            await _authService.PasswordDimenticata(dto);
+            // Stessa risposta sia se l'email esiste sia se non esiste
+            // (il messaggio "Se l'email è registrata…" lo mostra il FE)
+            return NoContent();
         }
 
         [HttpPost("reimposta-password")]
@@ -121,16 +90,9 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> ReimpostaPassword([FromBody] ReimpostaPasswordDto dto)
         {
-            try
-            {
-                var risultato = await _authService.ReimpostaPassword(dto);
-                if (!risultato) return BadRequest("Il link non è valido o è scaduto. Richiedine uno nuovo");
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var risultato = await _authService.ReimpostaPassword(dto);
+            if (!risultato) return BadRequest("Il link non è valido o è scaduto. Richiedine uno nuovo");
+            return NoContent();
         }
     }
 }

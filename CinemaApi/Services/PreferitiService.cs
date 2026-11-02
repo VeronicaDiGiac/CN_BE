@@ -1,4 +1,5 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.Helpers;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,7 +41,7 @@ namespace CinemaApi.Services
         // Si possono aggiungere ai preferiti solo i film approvati (gli altri non sono visibili).
         public async Task<bool> FilmEsiste(int idFilm)
         {
-            return await _db.Film.AnyAsync(f => f.IdFilm == idFilm && f.Stato == "Approvato");
+            return await _db.Film.AnyAsync(f => f.IdFilm == idFilm && f.Stato == StatiFilm.Approvato);
         }
 
         public async Task<Preferito?> CreatePreferito(CreatePreferitoDto dto, int idUtente)

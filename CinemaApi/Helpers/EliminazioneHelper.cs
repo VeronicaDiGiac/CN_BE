@@ -27,7 +27,7 @@ namespace CinemaApi.Helpers
             }
 
             await db.Segnalazioni
-                .Where(s => s.TipoContenuto == "Commento" && tutti.Contains(s.IdContenuto))
+                .Where(s => s.TipoContenuto == TipiContenuto.Commento && tutti.Contains(s.IdContenuto))
                 .ExecuteDeleteAsync();
 
             // Prima stacco le risposte dal padre, altrimenti la FK Commenti -> Commenti
@@ -51,7 +51,7 @@ namespace CinemaApi.Helpers
             await EliminaCommenti(db, idCommenti);
 
             await db.Segnalazioni
-                .Where(s => s.TipoContenuto == "Recensione" && idRecensioni.Contains(s.IdContenuto))
+                .Where(s => s.TipoContenuto == TipiContenuto.Recensione && idRecensioni.Contains(s.IdContenuto))
                 .ExecuteDeleteAsync();
 
             await db.Recensioni

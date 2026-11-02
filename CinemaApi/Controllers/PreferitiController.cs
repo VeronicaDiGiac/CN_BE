@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,15 +18,8 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Get(int? idUtente)
         {
-            try
-            {
-                var preferiti = await _preferitiService.GetPreferiti(idUtente);
-                return Ok(preferiti);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var preferiti = await _preferitiService.GetPreferiti(idUtente);
+            return Ok(preferiti);
         }
 
         [HttpPost]
@@ -37,18 +30,11 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreatePreferitoDto dto)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-                if (!await _preferitiService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
-                var preferito = await _preferitiService.CreatePreferito(dto, idUtenteAutenticato);
-                if (preferito == null) return Conflict("Film già presente nei preferiti");
-                return CreatedAtAction(nameof(Create), preferito);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            if (!await _preferitiService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
+            var preferito = await _preferitiService.CreatePreferito(dto, idUtenteAutenticato);
+            if (preferito == null) return Conflict("Film già presente nei preferiti");
+            return CreatedAtAction(nameof(Create), preferito);
         }
 
         [HttpDelete("{id}")]
@@ -59,26 +45,19 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Delete(int id)
         {
-            try
-            {
-                var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var idUtenteAutenticato = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
 
-                var preferito = await _preferitiService.GetPreferitoById(id);
-                if (preferito == null) return NotFound();
+            var preferito = await _preferitiService.GetPreferitoById(id);
+            if (preferito == null) return NotFound();
 
-                // Controllo proprietario: puoi eliminare solo i TUOI preferiti.
-                // Niente eccezione Admin: i preferiti sono personali, un Admin non
-                // ha motivo di toccare i preferiti altrui.
-                if (preferito.IdUtente != idUtenteAutenticato) return Forbid();
+            // Controllo proprietario: puoi eliminare solo i TUOI preferiti.
+            // Niente eccezione Admin: i preferiti sono personali, un Admin non
+            // ha motivo di toccare i preferiti altrui.
+            if (preferito.IdUtente != idUtenteAutenticato) return Forbid();
 
-                var eliminato = await _preferitiService.DeletePreferito(id);
-                if (!eliminato) return NotFound();
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+            var eliminato = await _preferitiService.DeletePreferito(id);
+            if (!eliminato) return NotFound();
+            return NoContent();
         }
     }
 }

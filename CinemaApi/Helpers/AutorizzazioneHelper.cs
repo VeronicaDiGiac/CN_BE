@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 
 namespace CinemaApi.Helpers
 {
@@ -6,7 +6,7 @@ namespace CinemaApi.Helpers
     {
         public static bool PuoModificare ( int? idProprietarioRisorsa, int idUtenteAutenticato, string ruolo)
         {
-            return idProprietarioRisorsa == idUtenteAutenticato || ruolo == "Admin";
+            return idProprietarioRisorsa == idUtenteAutenticato || ruolo == Ruoli.Admin;
         }
     }
 }

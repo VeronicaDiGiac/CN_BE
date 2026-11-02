@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Helpers;
 using CinemaApi.Models;
@@ -25,7 +25,7 @@ namespace CinemaApi.Services
         {
             var film = await _db.Film
                 .Where(f => f.IdFilm == id)
-                .Where (f=>f.Stato == "Approvato")
+                .Where (f=>f.Stato == StatiFilm.Approvato)
                 .Select(f => new FilmDettaglioDto
                 {
                     IdFilm = f.IdFilm,
@@ -76,7 +76,7 @@ namespace CinemaApi.Services
                 .Where(f => genere == null || f.Genere.Contains(genere))
                 .Where(f => annoUscita == null || f.AnnoUscita == annoUscita)
                 .Where(f => attori == null || f.Attori.Contains(attori))
-                .Where(f => f.Stato == "Approvato");
+                .Where(f => f.Stato == StatiFilm.Approvato);
 
 
             var totalCount = await query.CountAsync();
@@ -115,7 +115,7 @@ namespace CinemaApi.Services
                 Descrizione = dto.Descrizione,
                 IdUtente = idUtente,
                 // Admin: film approvato subito. Utente normale: in attesa di revisione.
-                Stato = ruolo == "Admin" ? "Approvato" : "InAttesa"
+                Stato = ruolo == Ruoli.Admin ? StatiFilm.Approvato : StatiFilm.InAttesa
             };
             _db.Film.Add(film);
             await _db.SaveChangesAsync();
@@ -186,7 +186,7 @@ namespace CinemaApi.Services
         public async Task<List<Film>> GetFilmInAttesa()
         {
             return await _db.Film
-                .Where(f => f.Stato == "InAttesa")
+                .Where(f => f.Stato == StatiFilm.InAttesa)
                 .ToListAsync();
         }
 
@@ -204,13 +204,13 @@ namespace CinemaApi.Services
             if (esistente != null)
             {
                 esistente.TmdbId = dati.TmdbId;
-                esistente.Stato = "Approvato";
+                esistente.Stato = StatiFilm.Approvato;
                 CompletaDaTmdb(esistente, dati);
                 await _db.SaveChangesAsync();
                 return new TmdbImportazioneDto { IdFilm = esistente.IdFilm, Creato = false };
             }
 
-            var film = new Film { TmdbId = dati.TmdbId, Stato = "Approvato" };
+            var film = new Film { TmdbId = dati.TmdbId, Stato = StatiFilm.Approvato };
             CompletaDaTmdb(film, dati);
             _db.Film.Add(film);
             try
@@ -259,7 +259,7 @@ namespace CinemaApi.Services
         {
             var ids = tmdbIds.ToList();
             return await _db.Film
-                .Where(f => f.TmdbId != null && ids.Contains(f.TmdbId.Value) && f.Stato == "Approvato")
+                .Where(f => f.TmdbId != null && ids.Contains(f.TmdbId.Value) && f.Stato == StatiFilm.Approvato)
                 .ToDictionaryAsync(f => f.TmdbId!.Value, f => f.IdFilm);
         }
 
