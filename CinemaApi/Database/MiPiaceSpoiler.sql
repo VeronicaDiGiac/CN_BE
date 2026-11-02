@@ -15,7 +15,7 @@ BEGIN
     CREATE TABLE dbo.MiPiaceRecensioni (
         IdUtente     INT       NOT NULL CONSTRAINT FK_MiPiace_Utenti REFERENCES dbo.Utenti(IdUtente),
         IdRecensione INT       NOT NULL CONSTRAINT FK_MiPiace_Recensioni REFERENCES dbo.Recensioni(IdRecensione),
-        DataMiPiace  DATETIME2 NOT NULL CONSTRAINT DF_MiPiace_Data DEFAULT SYSUTCDATETIME(),
+        DataMiPiace  DATETIME2 NOT NULL CONSTRAINT DF_MiPiace_Data DEFAULT SYSDATETIME(),
         CONSTRAINT PK_MiPiaceRecensioni PRIMARY KEY (IdUtente, IdRecensione)
     );
     CREATE INDEX IX_MiPiace_Recensione ON dbo.MiPiaceRecensioni(IdRecensione);

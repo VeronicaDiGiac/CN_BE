@@ -16,6 +16,13 @@ namespace CinemaApi.Helpers
         public const string Rifiutato = "Rifiutato";
     }
 
+    // Tipi di voce del feed delle attività
+    public static class TipiAttivita
+    {
+        public const string Visione = "Visione";
+        public const string Recensione = "Recensione";
+    }
+
     public static class TipiContenuto
     {
         public const string Recensione = "Recensione";

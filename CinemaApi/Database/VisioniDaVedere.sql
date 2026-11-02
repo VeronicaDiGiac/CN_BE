@@ -10,7 +10,7 @@ BEGIN
         IdUtente      INT       NOT NULL CONSTRAINT FK_Visioni_Utenti REFERENCES dbo.Utenti(IdUtente),
         IdFilm        INT       NOT NULL CONSTRAINT FK_Visioni_Film REFERENCES dbo.Film(IdFilm),
         DataVisione   DATE      NOT NULL,
-        DataCreazione DATETIME2 NOT NULL CONSTRAINT DF_Visioni_DataCreazione DEFAULT SYSUTCDATETIME()
+        DataCreazione DATETIME2 NOT NULL CONSTRAINT DF_Visioni_DataCreazione DEFAULT SYSDATETIME()
     );
     CREATE INDEX IX_Visioni_Utente_Data ON dbo.Visioni(IdUtente, DataVisione DESC);
     CREATE INDEX IX_Visioni_Film ON dbo.Visioni(IdFilm);
@@ -24,7 +24,7 @@ BEGIN
         IdDaVedere   INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_DaVedere PRIMARY KEY,
         IdUtente     INT       NOT NULL CONSTRAINT FK_DaVedere_Utenti REFERENCES dbo.Utenti(IdUtente),
         IdFilm       INT       NOT NULL CONSTRAINT FK_DaVedere_Film REFERENCES dbo.Film(IdFilm),
-        DataAggiunta DATETIME2 NOT NULL CONSTRAINT DF_DaVedere_DataAggiunta DEFAULT SYSUTCDATETIME(),
+        DataAggiunta DATETIME2 NOT NULL CONSTRAINT DF_DaVedere_DataAggiunta DEFAULT SYSDATETIME(),
         CONSTRAINT UX_DaVedere_Utente_Film UNIQUE (IdUtente, IdFilm)
     );
     CREATE INDEX IX_DaVedere_Film ON dbo.DaVedere(IdFilm);

@@ -35,7 +35,7 @@ namespace CinemaApi.Services
         {
             if (await _db.DaVedere.AnyAsync(d => d.IdUtente == idUtente && d.IdFilm == idFilm)) return;
 
-            _db.DaVedere.Add(new DaVedere { IdUtente = idUtente, IdFilm = idFilm, DataAggiunta = DateTime.UtcNow });
+            _db.DaVedere.Add(new DaVedere { IdUtente = idUtente, IdFilm = idFilm, DataAggiunta = DateTime.Now });
             try
             {
                 await _db.SaveChangesAsync();

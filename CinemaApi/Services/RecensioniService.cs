@@ -54,7 +54,7 @@ namespace CinemaApi.Services
             {
                 IdRecensione = idRecensione,
                 IdUtente = idUtente,
-                DataMiPiace = DateTime.UtcNow
+                DataMiPiace = DateTime.Now
             });
             try
             {

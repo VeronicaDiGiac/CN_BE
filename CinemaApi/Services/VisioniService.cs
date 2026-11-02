@@ -61,7 +61,7 @@ namespace CinemaApi.Services
                 IdUtente = idUtente,
                 IdFilm = dto.IdFilm,
                 DataVisione = dto.DataVisione ?? DateOnly.FromDateTime(DateTime.Now),
-                DataCreazione = DateTime.UtcNow
+                DataCreazione = DateTime.Now
             };
 
             using var transazione = await _db.Database.BeginTransactionAsync();
