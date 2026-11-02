@@ -165,6 +165,7 @@ namespace CinemaApi.Services
             await _db.Visioni.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdFilm == id).ExecuteDeleteAsync();
+            await _db.ListeFilm.Where(lf => lf.IdFilm == id).ExecuteDeleteAsync();
             _db.Film.Remove(film);
             await _db.SaveChangesAsync();
             await transazione.CommitAsync();
@@ -198,6 +199,74 @@ namespace CinemaApi.Services
             return await _db.Film
                 .Where(f => f.Stato == StatiFilm.InAttesa)
                 .ToListAsync();
+        }
+
+        // Unisce due schede dello stesso film: tutto quello che riguarda "daEliminare" passa a
+        // "daTenere", poi "daEliminare" viene cancellato. Dove lo stesso utente ha qualcosa su
+        // entrambe (recensione, preferito, "da vedere", stessa lista) vince quella da tenere.
+        // false se uno dei due film non esiste.
+        public async Task<bool> UnisciFilm(int idDaTenere, int idDaEliminare)
+        {
+            var tenere = await _db.Film.FindAsync(idDaTenere);
+            var eliminare = await _db.Film.FindAsync(idDaEliminare);
+            if (tenere == null || eliminare == null) return false;
+
+            using var transazione = await _db.Database.BeginTransactionAsync();
+
+            // Recensioni: un utente ne ha al massimo una per film
+            var autoriSulTenuto = _db.Recensioni.Where(r => r.IdFilm == idDaTenere).Select(r => r.IdUtente);
+            var recensioniDoppie = await _db.Recensioni
+                .Where(r => r.IdFilm == idDaEliminare && autoriSulTenuto.Contains(r.IdUtente))
+                .Select(r => r.IdRecensione)
+                .ToListAsync();
+            await EliminazioneHelper.EliminaRecensioni(_db, recensioniDoppie);
+            await _db.Recensioni.Where(r => r.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.IdFilm, idDaTenere));
+
+            // Preferiti e "Da vedere": uno per utente
+            var preferitiSulTenuto = _db.Preferiti.Where(p => p.IdFilm == idDaTenere).Select(p => p.IdUtente);
+            await _db.Preferiti.Where(p => p.IdFilm == idDaEliminare && preferitiSulTenuto.Contains(p.IdUtente)).ExecuteDeleteAsync();
+            await _db.Preferiti.Where(p => p.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.IdFilm, idDaTenere));
+
+            var daVedereSulTenuto = _db.DaVedere.Where(d => d.IdFilm == idDaTenere).Select(d => d.IdUtente);
+            await _db.DaVedere.Where(d => d.IdFilm == idDaEliminare && daVedereSulTenuto.Contains(d.IdUtente)).ExecuteDeleteAsync();
+            await _db.DaVedere.Where(d => d.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.IdFilm, idDaTenere));
+
+            // Visioni: il diario conserva tutte le visioni
+            await _db.Visioni.Where(v => v.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(v => v.IdFilm, idDaTenere));
+
+            // Liste: un film una volta per lista
+            var listeConTenuto = _db.ListeFilm.Where(lf => lf.IdFilm == idDaTenere).Select(lf => lf.IdLista);
+            await _db.ListeFilm.Where(lf => lf.IdFilm == idDaEliminare && listeConTenuto.Contains(lf.IdLista)).ExecuteDeleteAsync();
+            await _db.ListeFilm.Where(lf => lf.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(lf => lf.IdFilm, idDaTenere));
+
+            await _db.Notifiche.Where(n => n.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.IdFilm, idDaTenere));
+
+            // Collegamento TMDB e campi vuoti della scheda tenuta presi dall'altra.
+            // Il TmdbId va prima tolto dal film eliminato: l'indice è unico.
+            var tmdbId = eliminare.TmdbId;
+            if (tenere.TmdbId == null && tmdbId != null)
+            {
+                eliminare.TmdbId = null;
+                await _db.SaveChangesAsync();
+                tenere.TmdbId = tmdbId;
+            }
+            if (string.IsNullOrWhiteSpace(tenere.Regista)) tenere.Regista = eliminare.Regista;
+            tenere.AnnoUscita ??= eliminare.AnnoUscita;
+            if (string.IsNullOrWhiteSpace(tenere.Genere)) tenere.Genere = eliminare.Genere;
+            if (string.IsNullOrWhiteSpace(tenere.Attori)) tenere.Attori = eliminare.Attori;
+            if (string.IsNullOrWhiteSpace(tenere.ImmagineUrl)) tenere.ImmagineUrl = eliminare.ImmagineUrl;
+            if (string.IsNullOrWhiteSpace(tenere.Descrizione)) tenere.Descrizione = eliminare.Descrizione;
+
+            _db.Film.Remove(eliminare);
+            await _db.SaveChangesAsync();
+            await transazione.CommitAsync();
+            return true;
         }
 
         // ---- TMDB ----

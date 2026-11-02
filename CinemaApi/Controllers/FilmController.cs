@@ -149,5 +149,19 @@ namespace CinemaApi.Controllers
             var film = await _filmService.GetFilmInAttesa();
             return Ok(film);
         }
+
+        // Admin: unisce due schede dello stesso film. {id} resta, {idDaEliminare} sparisce
+        // e tutto quello che lo riguardava (recensioni, preferiti, visioni, liste…) passa a {id}.
+        [HttpPost("{id}/unisci/{idDaEliminare}")]
+        [Authorize(Roles = Ruoli.Admin)]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Unisci(int id, int idDaEliminare)
+        {
+            if (id == idDaEliminare) return BadRequest("Scegli due film diversi");
+            if (!await _filmService.UnisciFilm(id, idDaEliminare)) return NotFound("Film non trovato");
+            return NoContent();
+        }
     }
 }

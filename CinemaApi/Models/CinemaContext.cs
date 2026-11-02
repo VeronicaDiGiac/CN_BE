@@ -28,11 +28,18 @@ namespace CinemaApi.Models
 
         public DbSet<Notifica> Notifiche { get; set; }
 
+        public DbSet<Lista> Liste { get; set; }
+
+        public DbSet<ListaFilm> ListeFilm { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<MiPiaceRecensione>()
                 .HasKey(m => new { m.IdUtente, m.IdRecensione });
+
+            modelBuilder.Entity<ListaFilm>()
+                .HasKey(lf => new { lf.IdLista, lf.IdFilm });
 
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)
