@@ -4,6 +4,8 @@ using CinemaApi.Helpers;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using System.Globalization;
+using System.Text;
 
 namespace CinemaApi.Services
 {
@@ -197,8 +199,7 @@ namespace CinemaApi.Services
             var esistente = await _db.Film.FirstOrDefaultAsync(f => f.TmdbId == dati.TmdbId);
 
             // Film inserito a mano prima dell'integrazione: lo si collega invece di duplicarlo
-            esistente ??= await _db.Film.FirstOrDefaultAsync(f =>
-                f.TmdbId == null && f.Titolo == dati.Titolo && f.AnnoUscita == dati.AnnoUscita);
+            esistente ??= await TrovaGemelloManuale(dati);
 
             if (esistente != null)
             {
@@ -224,6 +225,33 @@ namespace CinemaApi.Services
                 return new TmdbImportazioneDto { IdFilm = giaImportato.IdFilm, Creato = false };
             }
             return new TmdbImportazioneDto { IdFilm = film.IdFilm, Creato = true };
+        }
+
+        // Cerca un film inserito a mano che sia lo stesso film TMDB anche se il titolo è scritto
+        // in modo diverso ("Dune: Parte Due" / "Dune - Parte due") o è quello originale
+        // ("Poor Things" / "Povere creature!"). L'anno deve coincidere, se il film manuale ce l'ha.
+        private async Task<Film?> TrovaGemelloManuale(FilmTmdb dati)
+        {
+            var titoliTmdb = new[] { dati.Titolo, dati.TitoloOriginale }
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Select(t => TitoloNormalizzato(t!))
+                .ToHashSet();
+
+            // Pochi candidati (solo film manuali dello stesso anno o senza anno): il confronto si fa in memoria
+            var candidati = await _db.Film
+                .Where(f => f.TmdbId == null && (f.AnnoUscita == null || f.AnnoUscita == dati.AnnoUscita))
+                .ToListAsync();
+
+            return candidati.FirstOrDefault(f => f.Titolo != null && titoliTmdb.Contains(TitoloNormalizzato(f.Titolo)));
+        }
+
+        // Solo lettere e cifre, minuscole e senza accenti: "Dune: Parte Due" -> "dunepartedue"
+        private static string TitoloNormalizzato(string titolo)
+        {
+            var scomposto = titolo.Normalize(NormalizationForm.FormD);
+            var lettere = scomposto.Where(c =>
+                CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark && char.IsLetterOrDigit(c));
+            return new string(lettere.ToArray()).ToLowerInvariant();
         }
 
         // TmdbId -> IdFilm per i film TMDB già presenti (e visibili) nel catalogo

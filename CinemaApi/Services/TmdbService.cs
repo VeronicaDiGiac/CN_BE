@@ -98,6 +98,7 @@ namespace CinemaApi.Services
             {
                 TmdbId = film.Id,
                 Titolo = film.Title ?? film.OriginalTitle ?? "",
+                TitoloOriginale = film.OriginalTitle,
                 AnnoUscita = Anno(film.ReleaseDate),
                 Regista = Unisci(film.Credits?.Crew.Where(c => c.Job == "Director").Select(c => c.Name)),
                 Genere = Unisci(film.Genres.Select(g => g.Name)),
@@ -188,6 +189,7 @@ namespace CinemaApi.Services
     {
         public int TmdbId { get; set; }
         public string Titolo { get; set; } = "";
+        public string? TitoloOriginale { get; set; }
         public int? AnnoUscita { get; set; }
         public string? Regista { get; set; }
         public string? Genere { get; set; }
