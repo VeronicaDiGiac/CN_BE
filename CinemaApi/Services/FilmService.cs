@@ -36,6 +36,7 @@ namespace CinemaApi.Services
                     Descrizione = f.Descrizione,
                     VotoMedio = f.Recensioni.Any() ? f.Recensioni.Average(r => r.Voto) : null,
                     NumeroRecensioni = f.Recensioni.Count(),
+                    TmdbId = f.TmdbId,
                     GiaRecensito = idUtenteAutenticato != null &&
                                     f.Recensioni.Any(r => r.IdUtente == idUtenteAutenticato)
                 })
@@ -186,6 +187,92 @@ namespace CinemaApi.Services
                 .Where(f => f.Stato == "InAttesa")
                 .ToListAsync();
         }
+
+        // ---- TMDB ----
+
+        // Mette nel catalogo un film TMDB (o restituisce quello che c'è già).
+        // I dati arrivano da TMDB, quindi il film è approvato subito e non ha un autore.
+        public async Task<TmdbImportazioneDto> ImportaDaTmdb(FilmTmdb dati)
+        {
+            var esistente = await _db.Film.FirstOrDefaultAsync(f => f.TmdbId == dati.TmdbId);
+
+            // Film inserito a mano prima dell'integrazione: lo si collega invece di duplicarlo
+            esistente ??= await _db.Film.FirstOrDefaultAsync(f =>
+                f.TmdbId == null && f.Titolo == dati.Titolo && f.AnnoUscita == dati.AnnoUscita);
+
+            if (esistente != null)
+            {
+                esistente.TmdbId = dati.TmdbId;
+                esistente.Stato = "Approvato";
+                CompletaDaTmdb(esistente, dati);
+                await _db.SaveChangesAsync();
+                return new TmdbImportazioneDto { IdFilm = esistente.IdFilm, Creato = false };
+            }
+
+            var film = new Film { TmdbId = dati.TmdbId, Stato = "Approvato" };
+            CompletaDaTmdb(film, dati);
+            _db.Film.Add(film);
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Due importazioni contemporanee dello stesso film: vince la prima (indice unico su TmdbId)
+                _db.Entry(film).State = EntityState.Detached;
+                var giaImportato = await _db.Film.FirstAsync(f => f.TmdbId == dati.TmdbId);
+                return new TmdbImportazioneDto { IdFilm = giaImportato.IdFilm, Creato = false };
+            }
+            return new TmdbImportazioneDto { IdFilm = film.IdFilm, Creato = true };
+        }
+
+        // TmdbId -> IdFilm per i film TMDB già presenti (e visibili) nel catalogo
+        public async Task<Dictionary<int, int>> IdFilmPerTmdb(IEnumerable<int> tmdbIds)
+        {
+            var ids = tmdbIds.ToList();
+            return await _db.Film
+                .Where(f => f.TmdbId != null && ids.Contains(f.TmdbId.Value) && f.Stato == "Approvato")
+                .ToDictionaryAsync(f => f.TmdbId!.Value, f => f.IdFilm);
+        }
+
+        public async Task<List<Film>> GetFilmSenzaTmdb()
+        {
+            return await _db.Film
+                .Where(f => f.TmdbId == null)
+                .OrderBy(f => f.IdFilm)
+                .ToListAsync();
+        }
+
+        // null se il film non esiste, false se quel film TMDB è già collegato a un altro film
+        public async Task<bool?> CollegaTmdb(int idFilm, FilmTmdb dati)
+        {
+            var film = await _db.Film.FindAsync(idFilm);
+            if (film == null) return null;
+
+            var giaUsato = await _db.Film.AnyAsync(f => f.TmdbId == dati.TmdbId && f.IdFilm != idFilm);
+            if (giaUsato) return false;
+
+            film.TmdbId = dati.TmdbId;
+            CompletaDaTmdb(film, dati);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+
+        // Riempie solo i campi vuoti: quello che hanno scritto gli utenti non si sovrascrive
+        private static void CompletaDaTmdb(Film film, FilmTmdb dati)
+        {
+            if (string.IsNullOrWhiteSpace(film.Titolo)) film.Titolo = Taglia(dati.Titolo, 200);
+            film.AnnoUscita ??= dati.AnnoUscita;
+            if (string.IsNullOrWhiteSpace(film.Regista)) film.Regista = Taglia(dati.Regista, 200);
+            if (string.IsNullOrWhiteSpace(film.Genere)) film.Genere = Taglia(dati.Genere, 200);
+            if (string.IsNullOrWhiteSpace(film.Attori)) film.Attori = Taglia(dati.Attori, 200);
+            if (string.IsNullOrWhiteSpace(film.ImmagineUrl)) film.ImmagineUrl = dati.LocandinaUrl;
+            if (string.IsNullOrWhiteSpace(film.Descrizione)) film.Descrizione = Taglia(dati.Descrizione, 4000);
+        }
+
+        // Le colonne del DB hanno una lunghezza massima: meglio tagliare che far fallire l'importazione
+        private static string? Taglia(string? testo, int max) =>
+            testo == null || testo.Length <= max ? testo : testo[..(max - 1)] + "…";
 
         public async Task<bool> UpdateStatoFilm(int id, string nuovoStato)
         {

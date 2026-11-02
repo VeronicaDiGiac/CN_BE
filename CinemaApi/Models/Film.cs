@@ -22,6 +22,9 @@ namespace CinemaApi.Models
 
         public string Stato { get; set; } = "InAttesa";
 
+        // Id del film su TMDB: null per i film inseriti a mano
+        public int? TmdbId { get; set; }
+
         // Navigation properties
         public ICollection<Recensione>? Recensioni { get; set; }
         public ICollection<Preferito>? Preferiti { get; set; }

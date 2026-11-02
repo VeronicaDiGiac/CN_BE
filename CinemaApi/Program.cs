@@ -67,6 +67,14 @@ builder.Services.AddScoped<FollowService>();
 builder.Services.AddScoped<SegnalazioniService>();
 builder.Services.AddScoped<EmailService>();
 
+// TMDB: HttpClient dedicato + cache in memoria per non ripetere le stesse chiamate
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<TmdbService>(c =>
+{
+    c.BaseAddress = new Uri("https://api.themoviedb.org/3/");
+    c.Timeout = TimeSpan.FromSeconds(10);
+});
+
 // "Password dimenticata?": massimo 10 richieste ogni 15 minuti per indirizzo IP,
 // così nessuno può usare l'endpoint per riempire di mail la casella di qualcun altro
 builder.Services.AddRateLimiter(options =>
@@ -79,6 +87,16 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(15)
+            }));
+
+    // TMDB: 60 richieste al minuto per IP bastano per cercare mentre si scrive
+    options.AddPolicy(TmdbController.LimiteTmdb, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "sconosciuto",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1)
             }));
 });
 
