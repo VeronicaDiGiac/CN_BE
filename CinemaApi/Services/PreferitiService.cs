@@ -1,5 +1,6 @@
 using CinemaApi.Helpers;
 using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,22 +22,22 @@ namespace CinemaApi.Services
 
 
 
-        public async Task<List<object>> GetPreferiti(int? idUtente)
+        public async Task<List<PreferitoDto>> GetPreferiti(int? idUtente)
         {
-            return await _db.Preferiti
-                .Include(p => p.Film)
-                .Where(p => idUtente == null || p.IdUtente == idUtente)
-                .Select(p => new
-                {
-                    p.IdPreferito,
-                    p.IdUtente,
-                    p.IdFilm,
-                    TitoloFilm = p.Film != null ? p.Film.Titolo : null,
-                    Regista = p.Film != null ? p.Film.Regista : null,
-                    p.DataPreferito
-                } as object)
+            return await Proietta(_db.Preferiti.Where(p => idUtente == null || p.IdUtente == idUtente))
                 .ToListAsync();
         }
+
+        private static IQueryable<PreferitoDto> Proietta(IQueryable<Preferito> preferiti) =>
+            preferiti.Select(p => new PreferitoDto
+            {
+                IdPreferito = p.IdPreferito,
+                IdUtente = p.IdUtente,
+                IdFilm = p.IdFilm,
+                TitoloFilm = p.Film != null ? p.Film.Titolo : null,
+                Regista = p.Film != null ? p.Film.Regista : null,
+                DataPreferito = p.DataPreferito
+            });
 
         // Si possono aggiungere ai preferiti solo i film approvati (gli altri non sono visibili).
         public async Task<bool> FilmEsiste(int idFilm)
@@ -44,7 +45,7 @@ namespace CinemaApi.Services
             return await _db.FilmApprovatoEsiste(idFilm);
         }
 
-        public async Task<Preferito?> CreatePreferito(CreatePreferitoDto dto, int idUtente)
+        public async Task<PreferitoDto?> CreatePreferito(CreatePreferitoDto dto, int idUtente)
         {
             var esistente = await _db.Preferiti
                 .FirstOrDefaultAsync(p => p.IdUtente == idUtente && p.IdFilm == dto.IdFilm);
@@ -59,7 +60,7 @@ namespace CinemaApi.Services
             };
             _db.Preferiti.Add(preferito);
             await _db.SaveChangesAsync();
-            return preferito;
+            return await Proietta(_db.Preferiti.Where(p => p.IdPreferito == preferito.IdPreferito)).FirstAsync();
         }
 
         public async Task<bool> DeletePreferito(int id)

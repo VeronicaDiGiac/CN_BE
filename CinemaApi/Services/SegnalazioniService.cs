@@ -53,7 +53,7 @@ namespace CinemaApi.Services
             return await _db.Commenti.AnyAsync(c => c.IdCommento == idContenuto);
         }
 
-        public async Task<Segnalazione?> CreateSegnalazione(CreateSegnalazioneDto dto, int idUtente)
+        public async Task<SegnalazioneDto> CreateSegnalazione(CreateSegnalazioneDto dto, int idUtente)
         {
             var segnalazione = new Segnalazione
             {
@@ -65,7 +65,16 @@ namespace CinemaApi.Services
             };
             _db.Segnalazioni.Add(segnalazione);
             await _db.SaveChangesAsync();
-            return segnalazione;
+            return new SegnalazioneDto
+            {
+                IdSegnalazione = segnalazione.IdSegnalazione,
+                IdUtente = segnalazione.IdUtente,
+                TipoContenuto = segnalazione.TipoContenuto,
+                IdContenuto = segnalazione.IdContenuto,
+                Motivo = segnalazione.Motivo,
+                DataSegnalazione = segnalazione.DataSegnalazione,
+                Stato = segnalazione.Stato
+            };
         }
 
     

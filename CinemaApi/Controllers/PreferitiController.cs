@@ -1,5 +1,6 @@
 using CinemaApi.Helpers;
 using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +16,7 @@ namespace CinemaApi.Controllers
         public PreferitiController(PreferitiService preferitiService) { _preferitiService = preferitiService; }
 
         [HttpGet]
-        [ProducesResponseType(typeof(List<object>), 200)]
+        [ProducesResponseType(typeof(List<PreferitoDto>), 200)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Get(int? idUtente)
         {
@@ -25,7 +26,7 @@ namespace CinemaApi.Controllers
 
         [HttpPost]
         [Authorize]
-        [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(typeof(PreferitoDto), 201)]
         [ProducesResponseType(404)]
         [ProducesResponseType(409)]
         [ProducesResponseType(500)]

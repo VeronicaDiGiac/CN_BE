@@ -19,7 +19,7 @@ namespace CinemaApi.Controllers
 
         [HttpPost]
         [Authorize]
-        [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(typeof(SegnalazioneDto), 201)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
@@ -32,7 +32,7 @@ namespace CinemaApi.Controllers
         }
         [HttpGet]
         [Authorize(Roles = Ruoli.Admin)]
-        [ProducesResponseType(typeof(List<object>), 200)]
+        [ProducesResponseType(typeof(List<SegnalazioneDto>), 200)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Get()
         {

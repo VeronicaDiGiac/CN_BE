@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Helpers;
 using CinemaApi.Models;
@@ -35,6 +35,7 @@ namespace CinemaApi.Services
                 .Select(c => new CommentoDto
                 {
                     IdCommento = c.IdCommento,
+                    IdRecensione = c.IdRecensione,
                     UserName = c.Utente != null ? c.Utente.UserName : null,
                     IdUtente = c.IdUtente,
                     Contenuto = c.Contenuto,
@@ -44,6 +45,7 @@ namespace CinemaApi.Services
                     Risposte = c.Risposte != null ? c.Risposte.Select(r => new CommentoDto
                     {
                         IdCommento = r.IdCommento,
+                        IdRecensione = r.IdRecensione,
                         //Avevo scritto c.IdUtente
                         IdUtente = r.IdUtente,
                         UserName = r.Utente != null ? r.Utente.UserName : null,
@@ -56,7 +58,7 @@ namespace CinemaApi.Services
                 .ToListAsync();
         }
 
-        public async Task<Commento> CreateCommento(CreateCommentoDto dto, int idUtente)
+        public async Task<CommentoDto> CreateCommento(CreateCommentoDto dto, int idUtente)
         {
             var commento = new Commento
             {
@@ -70,7 +72,18 @@ namespace CinemaApi.Services
             _db.Commenti.Add(commento);
             await _db.SaveChangesAsync();
             await NotificaCommento(commento);
-            return commento;
+            return new CommentoDto
+            {
+                IdCommento = commento.IdCommento,
+                IdRecensione = commento.IdRecensione,
+                IdUtente = commento.IdUtente,
+                UserName = await _db.Utenti.Where(u => u.IdUtente == idUtente).Select(u => u.UserName).FirstOrDefaultAsync(),
+                Contenuto = commento.Contenuto,
+                DataCommento = commento.DataCommento,
+                IdCommentoPadre = commento.IdCommentoPadre,
+                Spoiler = commento.Spoiler,
+                Risposte = new List<CommentoDto>()
+            };
         }
 
         // Avvisa l'autore della recensione e, per le risposte, l'autore del commento a cui si risponde.

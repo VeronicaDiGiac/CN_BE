@@ -80,7 +80,7 @@ namespace CinemaApi.Services
                 await _notifiche.Annulla(recensione.IdUtente, idUtente, TipiNotifica.MiPiaceRecensione, recensione.IdRecensione);
         }
 
-        public async Task<Recensione?> CreateRecensione(CreateRecensioneDto dto, int idUtente)
+        public async Task<RecensioneDto?> CreateRecensione(CreateRecensioneDto dto, int idUtente)
         {
             var esistente = await _db.Recensioni.FirstOrDefaultAsync(r => r.IdUtente == idUtente && r.IdFilm == dto.IdFilm);
             if (esistente != null) return null;
@@ -95,7 +95,18 @@ namespace CinemaApi.Services
             };
             _db.Recensioni.Add(recensione);
             await _db.SaveChangesAsync();
-            return recensione;
+            return new RecensioneDto
+            {
+                IdRecensione = recensione.IdRecensione,
+                IdUtente = recensione.IdUtente,
+                IdFilm = recensione.IdFilm,
+                UserName = await _db.Utenti.Where(u => u.IdUtente == idUtente).Select(u => u.UserName).FirstOrDefaultAsync(),
+                TitoloFilm = await _db.Film.Where(f => f.IdFilm == dto.IdFilm).Select(f => f.Titolo).FirstOrDefaultAsync(),
+                Voto = recensione.Voto,
+                Contenuto = recensione.Contenuto,
+                DataRecensione = recensione.DataRecensione,
+                Spoiler = recensione.Spoiler
+            };
         }
 
         public async Task<bool> UpdateRecensione(int id, CreateRecensioneDto dto)

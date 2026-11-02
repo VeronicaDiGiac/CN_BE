@@ -32,7 +32,7 @@ namespace CinemaApi.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(PagedResultDto<Film>), 200)]
+        [ProducesResponseType(typeof(PagedResultDto<FilmDto>), 200)]
         [ProducesResponseType(500)]
         // ordinamento: recenti (predefinito), voto, titolo (Helpers.OrdinamentiCatalogo)
         public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber = 1, int pageSize = 20, string? ordinamento = null)
@@ -42,20 +42,19 @@ namespace CinemaApi.Controllers
         }
 
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(CinemaApi.Models.Film), 200)]
+        [ProducesResponseType(typeof(FilmDto), 200)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> GetById(int id)
         {
-            var film = await _filmService.GetFilmById(id);
+            var film = await _filmService.GetFilmApprovato(id);
             if (film == null) return NotFound();
-            if (film.Stato != StatiFilm.Approvato) return NotFound();
             return Ok(film);
         }
 
         [HttpPost]
         [Authorize]
-        [ProducesResponseType(typeof(CinemaApi.Models.Film), 201)]
+        [ProducesResponseType(typeof(FilmDto), 201)]
         [ProducesResponseType(typeof(FilmDoppioneDto), 409)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> Create([FromBody] CreateFilmDto dto)
@@ -155,7 +154,7 @@ namespace CinemaApi.Controllers
 
         [HttpGet("inattesa")]
         [Authorize(Roles = Ruoli.Admin)]
-        [ProducesResponseType(typeof(List<Film>), 200)]
+        [ProducesResponseType(typeof(List<FilmDto>), 200)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> GetInAttesa()
         {

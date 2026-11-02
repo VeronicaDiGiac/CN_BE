@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Helpers;
 using CinemaApi.Models;
@@ -52,7 +52,7 @@ namespace CinemaApi.Services
             return await _db.Utenti.AnyAsync(u => u.IdUtente == idUtente);
         }
 
-        public async Task<Follow?> CreateFollow(CreateFollowDto dto, int idFollower)
+        public async Task<FollowDto?> CreateFollow(CreateFollowDto dto, int idFollower)
         {
             var esistente = await _db.Follow
             .FirstOrDefaultAsync(f => f.FollowerId == idFollower && f.FollowingId == dto.FollowingId);
@@ -66,7 +66,18 @@ namespace CinemaApi.Services
             _db.Follow.Add(follow);
             await _db.SaveChangesAsync();
             await _notifiche.Notifica(dto.FollowingId, idFollower, TipiNotifica.NuovoFollower);
-            return follow;
+            // Come in GetFollowing: l'utente mostrato è quello appena seguito
+            return await _db.Follow
+                .Where(f => f.IdFollow == follow.IdFollow)
+                .Select(f => new FollowDto
+                {
+                    IdFollow = f.IdFollow,
+                    IdUtente = f.FollowingId,
+                    UserName = f.Following != null ? f.Following.UserName : null,
+                    AvatarUrl = f.Following != null ? f.Following.AvatarUrl : null,
+                    DataFollow = f.DataFollow
+                })
+                .FirstAsync();
         }
 
 

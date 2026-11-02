@@ -60,6 +60,13 @@ namespace CinemaApi.Services
             return await _db.Film.FindAsync(id);
         }
 
+        // Versione per il FE: solo i film approvati, come DTO
+        public Task<FilmDto?> GetFilmApprovato(int id) =>
+            _db.Film
+                .Where(f => f.IdFilm == id && f.Stato == StatiFilm.Approvato)
+                .Select(FilmDto.DaFilm)
+                .FirstOrDefaultAsync();
+
 
 
         // PAGINAZIONE — esempio concreto per ricordare la formula Skip/Take:
@@ -75,7 +82,7 @@ namespace CinemaApi.Services
         // (pageSize) = quanti elementi devo SALTARE prima di iniziare a prendere
         // quelli della pagina richiesta.
 
-        public async Task<PagedResultDto<Film>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize, string? ordinamento = null)
+        public async Task<PagedResultDto<FilmDto>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize, string? ordinamento = null)
         {
             //Da Ricordare : la query costruita non è ancora eseguita, la uso due volte, una volta per contare il totale una volta per prendere la pagina specifica, se eseguissi ToListAsync non si potrebbe contare niente.
             var query = _db.Film
@@ -103,9 +110,10 @@ namespace CinemaApi.Services
             var items = await ordinata
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
+                .Select(FilmDto.DaFilm)
                 .ToListAsync();
 
-            return new PagedResultDto<Film>
+            return new PagedResultDto<FilmDto>
             {
                 TotalCount = totalCount,
                 PageNumber = pageNumber,
@@ -116,7 +124,7 @@ namespace CinemaApi.Services
 
         // Se il film c'è già (approvato o in attesa) non si crea un doppione:
         // si restituisce quello esistente in "Doppione" e "Film" resta null
-        public async Task<(Film? Film, Film? Doppione)> CreateFilm(CreateFilmDto dto, int idUtente, string ruolo)
+        public async Task<(FilmDto? Film, Film? Doppione)> CreateFilm(CreateFilmDto dto, int idUtente, string ruolo)
         {
             var esistente = await TrovaFilmSimile(new[] { dto.Titolo }, dto.AnnoUscita);
             if (esistente != null) return (null, esistente);
@@ -136,7 +144,7 @@ namespace CinemaApi.Services
             };
             _db.Film.Add(film);
             await _db.SaveChangesAsync();
-            return (film, null);
+            return (await _db.Film.Where(f => f.IdFilm == film.IdFilm).Select(FilmDto.DaFilm).FirstAsync(), null);
         }
 
         public async Task<bool> UpdateFilm(int id, CreateFilmDto dto)
@@ -204,10 +212,12 @@ namespace CinemaApi.Services
             await _db.SaveChangesAsync();
             return urlRelativo;
         }
-        public async Task<List<Film>> GetFilmInAttesa()
+        public async Task<List<FilmDto>> GetFilmInAttesa()
         {
             return await _db.Film
                 .Where(f => f.Stato == StatiFilm.InAttesa)
+                .OrderBy(f => f.IdFilm)
+                .Select(FilmDto.DaFilm)
                 .ToListAsync();
         }
 

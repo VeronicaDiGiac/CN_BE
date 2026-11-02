@@ -1,8 +1,9 @@
-﻿namespace CinemaApi.DTOs.ResponseDto
+namespace CinemaApi.DTOs.ResponseDto
 {
     public class CommentoDto
     {
         public int IdCommento { get; set; }
+        public int IdRecensione { get; set; }
 
         public int IdUtente { get; set; }
         public string? UserName { get; set; }

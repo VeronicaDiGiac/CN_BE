@@ -26,7 +26,7 @@ namespace CinemaApi.Controllers
 
         [HttpPost]
         [Authorize]
-        [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(typeof(CommentoDto), 201)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(500)]

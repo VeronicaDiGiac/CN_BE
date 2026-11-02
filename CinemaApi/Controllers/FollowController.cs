@@ -17,7 +17,7 @@ namespace CinemaApi.Controllers
 
         [HttpPost]
         [Authorize]
-        [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(typeof(FollowDto), 201)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(409)]
@@ -32,7 +32,7 @@ namespace CinemaApi.Controllers
             return CreatedAtAction(nameof(Create), follow);
         }
         [HttpGet("followers/{idUtente}")]
-        [ProducesResponseType(typeof(List<object>), 200)]
+        [ProducesResponseType(typeof(List<FollowDto>), 200)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> GetFollowers(int idUtente)
         {
@@ -41,7 +41,7 @@ namespace CinemaApi.Controllers
         }
 
         [HttpGet("following/{idUtente}")]
-        [ProducesResponseType(typeof(List<object>), 200)]
+        [ProducesResponseType(typeof(List<FollowDto>), 200)]
         [ProducesResponseType(500)]
         public async Task<IActionResult> GetFollowing(int idUtente)
         {
