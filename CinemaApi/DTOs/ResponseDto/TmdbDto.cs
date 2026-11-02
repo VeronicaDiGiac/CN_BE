@@ -7,11 +7,31 @@ namespace CinemaApi.DTOs.ResponseDto
         public string Titolo { get; set; } = "";
         public string? TitoloOriginale { get; set; }
         public int? AnnoUscita { get; set; }
+        // Data completa 'YYYY-MM-DD' (serve per le uscite in arrivo)
+        public string? DataUscita { get; set; }
         public string? LocandinaUrl { get; set; }
         public string? Descrizione { get; set; }
 
         // Valorizzato se il film è già nel catalogo: il FE apre direttamente la scheda
         public int? IdFilm { get; set; }
+    }
+
+    // Trailer e "dove guardarlo" in Italia. Tutto vuoto se il film non è collegato a TMDB.
+    public class FilmExtraDto
+    {
+        // Chiave del video YouTube (il FE costruisce l'URL di incorporamento)
+        public string? TrailerYoutube { get; set; }
+        // Pagina TMDB/JustWatch con tutte le offerte
+        public string? LinkDoveGuardarlo { get; set; }
+        public List<PiattaformaDto> Abbonamento { get; set; } = new();
+        public List<PiattaformaDto> Noleggio { get; set; } = new();
+        public List<PiattaformaDto> Acquisto { get; set; } = new();
+    }
+
+    public class PiattaformaDto
+    {
+        public string Nome { get; set; } = "";
+        public string? LogoUrl { get; set; }
     }
 
     public class TmdbRicercaDto

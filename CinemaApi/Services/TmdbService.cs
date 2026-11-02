@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace CinemaApi.Services
 {
@@ -13,6 +14,8 @@ namespace CinemaApi.Services
     {
         private const string UrlImmagini = "https://image.tmdb.org/t/p/";
         private const string Lingua = "it-IT";
+        // Paese per uscite e piattaforme di streaming
+        private const string Regione = "IT";
 
         // Le risposte di TMDB sono in snake_case (poster_path, release_date…)
         private static readonly JsonSerializerOptions OpzioniJson = new()
@@ -31,17 +34,34 @@ namespace CinemaApi.Services
             _config = config;
         }
 
-        public async Task<TmdbRicercaDto> Cerca(string testo, int pagina = 1, int? anno = null)
+        public Task<TmdbRicercaDto> Cerca(string testo, int pagina = 1, int? anno = null)
         {
-            var chiave = $"tmdb:cerca:{testo.ToLowerInvariant()}:{pagina}:{anno}";
-            if (_cache.TryGetValue(chiave, out TmdbRicercaDto? inCache) && inCache != null) return Copia(inCache);
-
             var url = $"search/movie?query={Uri.EscapeDataString(testo)}&page={pagina}&language={Lingua}&include_adult=false";
             if (anno != null) url += $"&primary_release_year={anno}";
+            return ElencoFilm(url, $"tmdb:cerca:{testo.ToLowerInvariant()}:{pagina}:{anno}", TimeSpan.FromMinutes(10));
+        }
 
-            var risposta = await Get<RispostaRicerca>(url)
-                ?? new RispostaRicerca();
+        // Prossime uscite nei cinema italiani, dalla più vicina.
+        // TMDB include anche le riedizioni di film vecchi con la data originale (es. un film del 1968):
+        // in "In arrivo" confonderebbero, quindi si tengono solo le prime uscite dall'ultima settimana in poi.
+        public async Task<TmdbRicercaDto> UsciteInArrivo(int pagina = 1)
+        {
+            var elenco = await ElencoFilm($"movie/upcoming?language={Lingua}&region={Regione}&page={pagina}",
+                $"tmdb:uscite:{pagina}", TimeSpan.FromHours(6));
+            var daQuando = DateTime.Today.AddDays(-7).ToString("yyyy-MM-dd");
+            elenco.Risultati = elenco.Risultati
+                .Where(r => r.DataUscita != null && string.CompareOrdinal(r.DataUscita, daQuando) >= 0)
+                .OrderBy(r => r.DataUscita)
+                .ToList();
+            return elenco;
+        }
 
+        // Qualsiasi elenco di film TMDB (ricerca, uscite…) convertito nei nostri DTO, con cache
+        private async Task<TmdbRicercaDto> ElencoFilm(string url, string chiaveCache, TimeSpan durataCache)
+        {
+            if (_cache.TryGetValue(chiaveCache, out TmdbRicercaDto? inCache) && inCache != null) return Copia(inCache);
+
+            var risposta = await Get<RispostaRicerca>(url) ?? new RispostaRicerca();
             var risultato = new TmdbRicercaDto
             {
                 Pagina = risposta.Page,
@@ -53,14 +73,53 @@ namespace CinemaApi.Services
                     Titolo = r.Title ?? r.OriginalTitle ?? "",
                     TitoloOriginale = r.OriginalTitle,
                     AnnoUscita = Anno(r.ReleaseDate),
+                    DataUscita = string.IsNullOrEmpty(r.ReleaseDate) ? null : r.ReleaseDate,
                     LocandinaUrl = Immagine(r.PosterPath, "w342"),
                     Descrizione = r.Overview
                 }).ToList()
             };
 
-            _cache.Set(chiave, risultato, TimeSpan.FromMinutes(10));
+            _cache.Set(chiaveCache, risultato, durataCache);
             return Copia(risultato);
         }
+
+        // Trailer e piattaforme italiane di un film (dati "dove guardarlo" di JustWatch tramite TMDB)
+        public async Task<FilmExtraDto> Extra(int tmdbId)
+        {
+            var chiave = $"tmdb:extra:{tmdbId}";
+            if (_cache.TryGetValue(chiave, out FilmExtraDto? inCache) && inCache != null) return inCache;
+
+            var film = await Get<RispostaExtra>(
+                $"movie/{tmdbId}?language={Lingua}&append_to_response=videos,watch/providers&include_video_language=it,en,null");
+            var extra = new FilmExtraDto();
+            if (film != null)
+            {
+                // Trailer ufficiale su YouTube, preferendo quello italiano
+                extra.TrailerYoutube = film.Videos?.Results
+                    .Where(v => v.Site == "YouTube" && v.Type == "Trailer" && !string.IsNullOrEmpty(v.Key))
+                    .OrderBy(v => v.Iso6391 == "it" ? 0 : 1)
+                    .ThenBy(v => v.Official ? 0 : 1)
+                    .Select(v => v.Key)
+                    .FirstOrDefault();
+
+                if (film.WatchProviders?.Results.TryGetValue(Regione, out var italia) == true)
+                {
+                    extra.LinkDoveGuardarlo = italia.Link;
+                    extra.Abbonamento = Piattaforme(italia.Flatrate);
+                    extra.Noleggio = Piattaforme(italia.Rent);
+                    extra.Acquisto = Piattaforme(italia.Buy);
+                }
+            }
+
+            _cache.Set(chiave, extra, TimeSpan.FromHours(12));
+            return extra;
+        }
+
+        private static List<PiattaformaDto> Piattaforme(List<Piattaforma>? piattaforme) =>
+            (piattaforme ?? new())
+                .OrderBy(p => p.DisplayPriority)
+                .Select(p => new PiattaformaDto { Nome = p.ProviderName ?? "", LogoUrl = Immagine(p.LogoPath, "w92") })
+                .ToList();
 
         // Il controller valorizza IdFilm sui risultati: si lavora su una copia,
         // così due richieste contemporanee non modificano lo stesso oggetto in cache
@@ -75,6 +134,7 @@ namespace CinemaApi.Services
                 Titolo = x.Titolo,
                 TitoloOriginale = x.TitoloOriginale,
                 AnnoUscita = x.AnnoUscita,
+                DataUscita = x.DataUscita,
                 LocandinaUrl = x.LocandinaUrl,
                 Descrizione = x.Descrizione
             }).ToList()
@@ -169,6 +229,44 @@ namespace CinemaApi.Services
         }
 
         private class Genere { public string? Name { get; set; } }
+
+        private class RispostaExtra
+        {
+            public ElencoVideo? Videos { get; set; }
+            // "watch/providers" non si converte in snake_case: nome esplicito
+            [JsonPropertyName("watch/providers")]
+            public ElencoPiattaforme? WatchProviders { get; set; }
+        }
+
+        private class ElencoVideo { public List<Video> Results { get; set; } = new(); }
+
+        private class Video
+        {
+            public string? Key { get; set; }
+            public string? Site { get; set; }
+            public string? Type { get; set; }
+            public bool Official { get; set; }
+            [JsonPropertyName("iso_639_1")]
+            public string? Iso6391 { get; set; }
+        }
+
+        // Risultati per paese: "IT" -> piattaforme italiane
+        private class ElencoPiattaforme { public Dictionary<string, PiattaformePaese> Results { get; set; } = new(); }
+
+        private class PiattaformePaese
+        {
+            public string? Link { get; set; }
+            public List<Piattaforma>? Flatrate { get; set; }
+            public List<Piattaforma>? Rent { get; set; }
+            public List<Piattaforma>? Buy { get; set; }
+        }
+
+        private class Piattaforma
+        {
+            public string? ProviderName { get; set; }
+            public string? LogoPath { get; set; }
+            public int DisplayPriority { get; set; }
+        }
 
         private class Crediti
         {

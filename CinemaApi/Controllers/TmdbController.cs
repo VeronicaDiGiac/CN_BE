@@ -39,11 +39,42 @@ namespace CinemaApi.Controllers
             if (pagina < 1 || pagina > 500) return BadRequest("Pagina non valida");
 
             var risultato = await _tmdbService.Cerca(q.Trim(), pagina);
+            await SegnaGiaNelCatalogo(risultato);
+            return Ok(risultato);
+        }
+
+        // Prossime uscite nei cinema italiani (pubblico)
+        [HttpGet("uscite")]
+        [ProducesResponseType(typeof(TmdbRicercaDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(429)]
+        public async Task<IActionResult> Uscite(int pagina = 1)
+        {
+            if (pagina < 1 || pagina > 500) return BadRequest("Pagina non valida");
+            var risultato = await _tmdbService.UsciteInArrivo(pagina);
+            await SegnaGiaNelCatalogo(risultato);
+            return Ok(risultato);
+        }
+
+        // Trailer e "dove guardarlo" di un film del catalogo (vuoto se non è collegato a TMDB)
+        [HttpGet("film/{idFilm}/extra")]
+        [ProducesResponseType(typeof(FilmExtraDto), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(429)]
+        public async Task<IActionResult> Extra(int idFilm)
+        {
+            var film = await _filmService.GetFilmById(idFilm);
+            if (film == null || film.Stato != StatiFilm.Approvato) return NotFound();
+            if (film.TmdbId == null) return Ok(new FilmExtraDto());
+            return Ok(await _tmdbService.Extra(film.TmdbId.Value));
+        }
+
+        // Valorizza IdFilm sui film TMDB che sono già nel catalogo
+        private async Task SegnaGiaNelCatalogo(TmdbRicercaDto risultato)
+        {
             var giaPresenti = await _filmService.IdFilmPerTmdb(risultato.Risultati.Select(r => r.TmdbId));
             foreach (var r in risultato.Risultati)
                 r.IdFilm = giaPresenti.TryGetValue(r.TmdbId, out var idFilm) ? idFilm : null;
-
-            return Ok(risultato);
         }
 
         // Porta un film TMDB nel catalogo (se non c'è già) e restituisce il suo IdFilm.
