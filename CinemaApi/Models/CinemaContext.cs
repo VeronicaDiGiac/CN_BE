@@ -26,6 +26,8 @@ namespace CinemaApi.Models
 
         public DbSet<MiPiaceRecensione> MiPiaceRecensioni { get; set; }
 
+        public DbSet<Notifica> Notifiche { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -8,10 +8,12 @@ namespace CinemaApi.Services
     public class RecensioniService
     {
         private readonly CinemaContext _db;
+        private readonly NotificheService _notifiche;
 
-        public RecensioniService(CinemaContext db)
+        public RecensioniService(CinemaContext db, NotificheService notifiche)
         {
             _db = db;
+            _notifiche = notifiche;
         }
 
         public async Task<Recensione?> GetRecensioneById(int id)
@@ -45,14 +47,14 @@ namespace CinemaApi.Services
                 .ToListAsync();
         }
 
-        // Idempotente: un secondo "mi piace" non cambia niente
-        public async Task MettiMiPiace(int idRecensione, int idUtente)
+        // Idempotente: un secondo "mi piace" non cambia niente (e non manda un'altra notifica)
+        public async Task MettiMiPiace(Recensione recensione, int idUtente)
         {
-            if (await _db.MiPiaceRecensioni.AnyAsync(m => m.IdRecensione == idRecensione && m.IdUtente == idUtente)) return;
+            if (await _db.MiPiaceRecensioni.AnyAsync(m => m.IdRecensione == recensione.IdRecensione && m.IdUtente == idUtente)) return;
 
             _db.MiPiaceRecensioni.Add(new MiPiaceRecensione
             {
-                IdRecensione = idRecensione,
+                IdRecensione = recensione.IdRecensione,
                 IdUtente = idUtente,
                 DataMiPiace = DateTime.Now
             });
@@ -63,13 +65,20 @@ namespace CinemaApi.Services
             catch (DbUpdateException)
             {
                 // Due clic contemporanei: la chiave primaria ha già evitato il doppione
+                return;
             }
+            await _notifiche.Notifica(recensione.IdUtente, idUtente, TipiNotifica.MiPiaceRecensione,
+                recensione.IdFilm, recensione.IdRecensione);
         }
 
-        public async Task TogliMiPiace(int idRecensione, int idUtente) =>
-            await _db.MiPiaceRecensioni
-                .Where(m => m.IdRecensione == idRecensione && m.IdUtente == idUtente)
+        public async Task TogliMiPiace(Recensione recensione, int idUtente)
+        {
+            var tolti = await _db.MiPiaceRecensioni
+                .Where(m => m.IdRecensione == recensione.IdRecensione && m.IdUtente == idUtente)
                 .ExecuteDeleteAsync();
+            if (tolti > 0)
+                await _notifiche.Annulla(recensione.IdUtente, idUtente, TipiNotifica.MiPiaceRecensione, recensione.IdRecensione);
+        }
 
         public async Task<Recensione?> CreateRecensione(CreateRecensioneDto dto, int idUtente)
         {

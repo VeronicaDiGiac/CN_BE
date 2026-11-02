@@ -23,6 +23,15 @@ namespace CinemaApi.Helpers
         public const string Recensione = "Recensione";
     }
 
+    // Valori ammessi dal CHECK constraint di Notifiche.Tipo
+    public static class TipiNotifica
+    {
+        public const string NuovoFollower = "NuovoFollower";
+        public const string MiPiaceRecensione = "MiPiaceRecensione";
+        public const string CommentoRecensione = "CommentoRecensione";
+        public const string RispostaCommento = "RispostaCommento";
+    }
+
     public static class TipiContenuto
     {
         public const string Recensione = "Recensione";

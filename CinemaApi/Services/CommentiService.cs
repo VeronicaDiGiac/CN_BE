@@ -9,10 +9,12 @@ namespace CinemaApi.Services
     public class CommentiService
     {
         private readonly CinemaContext _db;
+        private readonly NotificheService _notifiche;
 
-        public CommentiService(CinemaContext db)
+        public CommentiService(CinemaContext db, NotificheService notifiche)
         {
             _db = db;
+            _notifiche = notifiche;
         }
 
         public async Task<Commento?> GetCommentoById(int id)
@@ -67,7 +69,37 @@ namespace CinemaApi.Services
             };
             _db.Commenti.Add(commento);
             await _db.SaveChangesAsync();
+            await NotificaCommento(commento);
             return commento;
+        }
+
+        // Avvisa l'autore della recensione e, per le risposte, l'autore del commento a cui si risponde.
+        // Se sono la stessa persona riceve una sola notifica (quella della risposta).
+        private async Task NotificaCommento(Commento commento)
+        {
+            // Proiezione e non FindAsync: caricare l'entità Recensione la collegherebbe al commento
+            // appena creato (che il controller restituisce) e il JSON andrebbe in ciclo
+            var recensione = await _db.Recensioni
+                .Where(r => r.IdRecensione == commento.IdRecensione)
+                .Select(r => new { r.IdRecensione, r.IdUtente, r.IdFilm })
+                .FirstOrDefaultAsync();
+            if (recensione == null) return;
+
+            int? autorePadre = null;
+            if (commento.IdCommentoPadre != null)
+            {
+                autorePadre = await _db.Commenti
+                    .Where(c => c.IdCommento == commento.IdCommentoPadre)
+                    .Select(c => (int?)c.IdUtente)
+                    .FirstOrDefaultAsync();
+                if (autorePadre != null)
+                    await _notifiche.Notifica(autorePadre.Value, commento.IdUtente, TipiNotifica.RispostaCommento,
+                        recensione.IdFilm, recensione.IdRecensione, commento.IdCommento);
+            }
+
+            if (recensione.IdUtente != autorePadre)
+                await _notifiche.Notifica(recensione.IdUtente, commento.IdUtente, TipiNotifica.CommentoRecensione,
+                    recensione.IdFilm, recensione.IdRecensione, commento.IdCommento);
         }
 
         public async Task<bool> UpdateCommento(int id, CreateCommentoDto dto)

@@ -30,6 +30,10 @@ namespace CinemaApi.Helpers
                 .Where(s => s.TipoContenuto == TipiContenuto.Commento && tutti.Contains(s.IdContenuto))
                 .ExecuteDeleteAsync();
 
+            await db.Notifiche
+                .Where(n => n.IdCommento != null && tutti.Contains(n.IdCommento.Value))
+                .ExecuteDeleteAsync();
+
             // Prima stacco le risposte dal padre, altrimenti la FK Commenti -> Commenti
             // blocca l'eliminazione in base all'ordine delle righe.
             await db.Commenti
@@ -56,6 +60,10 @@ namespace CinemaApi.Helpers
 
             await db.MiPiaceRecensioni
                 .Where(m => idRecensioni.Contains(m.IdRecensione))
+                .ExecuteDeleteAsync();
+
+            await db.Notifiche
+                .Where(n => n.IdRecensione != null && idRecensioni.Contains(n.IdRecensione.Value))
                 .ExecuteDeleteAsync();
 
             await db.Recensioni

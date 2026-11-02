@@ -1,5 +1,6 @@
 ﻿using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
+using CinemaApi.Helpers;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,10 +9,12 @@ namespace CinemaApi.Services
     public class FollowService
     {
         private readonly CinemaContext _db;
-    
-        public FollowService(CinemaContext db)
+        private readonly NotificheService _notifiche;
+
+        public FollowService(CinemaContext db, NotificheService notifiche)
         {
             _db = db;
+            _notifiche = notifiche;
         }
 
         public async Task<List<FollowDto>> GetFollowing(int idUtente)
@@ -62,6 +65,7 @@ namespace CinemaApi.Services
             };
             _db.Follow.Add(follow);
             await _db.SaveChangesAsync();
+            await _notifiche.Notifica(dto.FollowingId, idFollower, TipiNotifica.NuovoFollower);
             return follow;
         }
 
@@ -72,6 +76,7 @@ namespace CinemaApi.Services
             if (follow == null) return false;
             _db.Follow.Remove(follow);
             await _db.SaveChangesAsync();
+            await _notifiche.Annulla(followingId, followerId, TipiNotifica.NuovoFollower);
             return true;
 
         }

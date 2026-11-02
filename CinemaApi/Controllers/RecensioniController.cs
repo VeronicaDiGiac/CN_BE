@@ -36,16 +36,19 @@ namespace CinemaApi.Controllers
             if (recensione == null) return NotFound();
             if (recensione.IdUtente == User.IdUtente()) return BadRequest("Non puoi mettere \"mi piace\" alla tua recensione");
 
-            await _recensioniService.MettiMiPiace(id, User.IdUtente());
+            await _recensioniService.MettiMiPiace(recensione, User.IdUtente());
             return NoContent();
         }
 
         [HttpDelete("{id}/mipiace")]
         [Authorize]
         [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> TogliMiPiace(int id)
         {
-            await _recensioniService.TogliMiPiace(id, User.IdUtente());
+            var recensione = await _recensioniService.GetRecensioneById(id);
+            if (recensione == null) return NotFound();
+            await _recensioniService.TogliMiPiace(recensione, User.IdUtente());
             return NoContent();
         }
 

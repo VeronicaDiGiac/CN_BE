@@ -164,6 +164,7 @@ namespace CinemaApi.Services
             await _db.Preferiti.Where(p => p.IdFilm == id).ExecuteDeleteAsync();
             await _db.Visioni.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
+            await _db.Notifiche.Where(n => n.IdFilm == id).ExecuteDeleteAsync();
             _db.Film.Remove(film);
             await _db.SaveChangesAsync();
             await transazione.CommitAsync();
