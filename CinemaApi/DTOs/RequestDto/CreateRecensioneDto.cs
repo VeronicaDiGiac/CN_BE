@@ -15,5 +15,7 @@ namespace CinemaApi.DTOs.RequestDto
 
         [MaxLength(5000)]
         public string? Contenuto { get; set; }
+
+        public bool Spoiler { get; set; }
     }
 }

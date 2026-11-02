@@ -24,9 +24,14 @@ namespace CinemaApi.Models
 
         public DbSet<DaVedere> DaVedere { get; set; }
 
+        public DbSet<MiPiaceRecensione> MiPiaceRecensioni { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<MiPiaceRecensione>()
+                .HasKey(m => new { m.IdUtente, m.IdRecensione });
+
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)
                 .WithMany()

@@ -38,6 +38,7 @@ namespace CinemaApi.Services
                     Contenuto = c.Contenuto,
                     DataCommento = c.DataCommento,
                     IdCommentoPadre = c.IdCommentoPadre,
+                    Spoiler = c.Spoiler,
                     Risposte = c.Risposte != null ? c.Risposte.Select(r => new CommentoDto
                     {
                         IdCommento = r.IdCommento,
@@ -45,7 +46,9 @@ namespace CinemaApi.Services
                         IdUtente = r.IdUtente,
                         UserName = r.Utente != null ? r.Utente.UserName : null,
                         Contenuto = r.Contenuto,
-                        DataCommento = r.DataCommento
+                        DataCommento = r.DataCommento,
+                        IdCommentoPadre = r.IdCommentoPadre,
+                        Spoiler = r.Spoiler
                     }).ToList() : null
                 })
                 .ToListAsync();
@@ -59,7 +62,8 @@ namespace CinemaApi.Services
                 IdRecensione = dto.IdRecensione,
                 Contenuto = dto.Contenuto,
                 DataCommento = DateTime.Now,
-                IdCommentoPadre = dto.IdCommentoPadre
+                IdCommentoPadre = dto.IdCommentoPadre,
+                Spoiler = dto.Spoiler
             };
             _db.Commenti.Add(commento);
             await _db.SaveChangesAsync();
@@ -72,6 +76,7 @@ namespace CinemaApi.Services
             if (commento == null) return false;
 
             commento.Contenuto = dto.Contenuto;
+            commento.Spoiler = dto.Spoiler;
 
             await _db.SaveChangesAsync();
             return true;

@@ -11,6 +11,7 @@ namespace CinemaApi.Models
         public int IdRecensione { get; set; }
         public string? Contenuto { get; set; }
         public DateTime? DataCommento { get; set; }
+        public bool Spoiler { get; set; }
 
         [ForeignKey("IdUtente")]
         public Utente? Utente { get; set; }

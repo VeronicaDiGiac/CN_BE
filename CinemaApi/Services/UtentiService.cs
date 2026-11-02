@@ -83,6 +83,7 @@ namespace CinemaApi.Services
             await _db.PasswordReset.Where(p => p.IdUtente == id).ExecuteDeleteAsync();
             await _db.Visioni.Where(v => v.IdUtente == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdUtente == id).ExecuteDeleteAsync();
+            await _db.MiPiaceRecensioni.Where(m => m.IdUtente == id).ExecuteDeleteAsync();
             await _db.Segnalazioni
                 .Where(s => s.IdAdminGestore == id)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.IdAdminGestore, (int?)null));

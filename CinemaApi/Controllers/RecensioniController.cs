@@ -20,8 +20,33 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         public async Task<IActionResult> Get(int? idFilm, int? idUtente)
         {
-            var recensioni = await _recensioniService.GetRecensioni(idFilm, idUtente);
+            var recensioni = await _recensioniService.GetRecensioni(idFilm, idUtente, User.IdUtenteOpzionale());
             return Ok(recensioni);
+        }
+
+        // PUT perché è idempotente: ripeterlo non aggiunge un secondo "mi piace"
+        [HttpPut("{id}/mipiace")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> MettiMiPiace(int id)
+        {
+            var recensione = await _recensioniService.GetRecensioneById(id);
+            if (recensione == null) return NotFound();
+            if (recensione.IdUtente == User.IdUtente()) return BadRequest("Non puoi mettere \"mi piace\" alla tua recensione");
+
+            await _recensioniService.MettiMiPiace(id, User.IdUtente());
+            return NoContent();
+        }
+
+        [HttpDelete("{id}/mipiace")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        public async Task<IActionResult> TogliMiPiace(int id)
+        {
+            await _recensioniService.TogliMiPiace(id, User.IdUtente());
+            return NoContent();
         }
 
         [HttpPost]

@@ -54,6 +54,10 @@ namespace CinemaApi.Helpers
                 .Where(s => s.TipoContenuto == TipiContenuto.Recensione && idRecensioni.Contains(s.IdContenuto))
                 .ExecuteDeleteAsync();
 
+            await db.MiPiaceRecensioni
+                .Where(m => idRecensioni.Contains(m.IdRecensione))
+                .ExecuteDeleteAsync();
+
             await db.Recensioni
                 .Where(r => idRecensioni.Contains(r.IdRecensione))
                 .ExecuteDeleteAsync();

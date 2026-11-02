@@ -9,6 +9,7 @@
         public string? Contenuto { get; set; }
         public DateTime? DataCommento { get; set; }
         public int? IdCommentoPadre { get; set; }
+        public bool Spoiler { get; set; }
         // Tipo ricorsivo: CommentoDto contiene una lista di CommentoDto
         public List<CommentoDto>? Risposte { get; set; }
     }

@@ -12,5 +12,7 @@ namespace CinemaApi.DTOs.RequestDto
         public string? Contenuto { get; set; }
 
         public int? IdCommentoPadre { get; set; }
+
+        public bool Spoiler { get; set; }
     }
 }

@@ -19,25 +19,57 @@ namespace CinemaApi.Services
             return await _db.Recensioni.FindAsync(id);
         }
 
-        public async Task<List<RecensioneDto>> GetRecensioni(int? idFilm, int? idUtente)
+        // idUtenteAutenticato serve solo a valorizzare MiPiaceUtente (null per chi non è loggato).
+        // Le più apprezzate prima, poi le più recenti.
+        public async Task<List<RecensioneDto>> GetRecensioni(int? idFilm, int? idUtente, int? idUtenteAutenticato = null)
         {
             return await _db.Recensioni
-                .Include(r => r.Utente)
-                .Include(r => r.Film)
                 .Where(r => idFilm == null || r.IdFilm == idFilm)
                 .Where (r => idUtente == null || r.IdUtente == idUtente)
                 .Select(r => new RecensioneDto
                 {
                     IdRecensione = r.IdRecensione,
                     IdUtente = r.IdUtente,
+                    IdFilm = r.IdFilm,
                     UserName = r.Utente != null ? r.Utente.UserName : null,
                     TitoloFilm = r.Film != null ? r.Film.Titolo : null,
                     Voto = r.Voto,
                     Contenuto = r.Contenuto,
-                    DataRecensione = r.DataRecensione
+                    DataRecensione = r.DataRecensione,
+                    Spoiler = r.Spoiler,
+                    NumeroMiPiace = r.MiPiace!.Count(),
+                    MiPiaceUtente = idUtenteAutenticato != null && r.MiPiace!.Any(m => m.IdUtente == idUtenteAutenticato)
                 })
+                .OrderByDescending(r => r.NumeroMiPiace)
+                .ThenByDescending(r => r.DataRecensione)
                 .ToListAsync();
         }
+
+        // Idempotente: un secondo "mi piace" non cambia niente
+        public async Task MettiMiPiace(int idRecensione, int idUtente)
+        {
+            if (await _db.MiPiaceRecensioni.AnyAsync(m => m.IdRecensione == idRecensione && m.IdUtente == idUtente)) return;
+
+            _db.MiPiaceRecensioni.Add(new MiPiaceRecensione
+            {
+                IdRecensione = idRecensione,
+                IdUtente = idUtente,
+                DataMiPiace = DateTime.UtcNow
+            });
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Due clic contemporanei: la chiave primaria ha già evitato il doppione
+            }
+        }
+
+        public async Task TogliMiPiace(int idRecensione, int idUtente) =>
+            await _db.MiPiaceRecensioni
+                .Where(m => m.IdRecensione == idRecensione && m.IdUtente == idUtente)
+                .ExecuteDeleteAsync();
 
         public async Task<Recensione?> CreateRecensione(CreateRecensioneDto dto, int idUtente)
         {
@@ -49,7 +81,8 @@ namespace CinemaApi.Services
                 IdFilm = dto.IdFilm,
                 Voto = dto.Voto,
                 Contenuto = dto.Contenuto,
-                DataRecensione = DateTime.Now
+                DataRecensione = DateTime.Now,
+                Spoiler = dto.Spoiler
             };
             _db.Recensioni.Add(recensione);
             await _db.SaveChangesAsync();
@@ -63,6 +96,7 @@ namespace CinemaApi.Services
 
             recensione.Voto = dto.Voto;
             recensione.Contenuto = dto.Contenuto;
+            recensione.Spoiler = dto.Spoiler;
 
             await _db.SaveChangesAsync();
             return true;
