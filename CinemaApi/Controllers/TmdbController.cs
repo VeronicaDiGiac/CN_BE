@@ -66,7 +66,12 @@ namespace CinemaApi.Controllers
             var film = await _filmService.GetFilmById(idFilm);
             if (film == null || film.Stato != StatiFilm.Approvato) return NotFound();
             if (film.TmdbId == null) return Ok(new FilmExtraDto());
-            return Ok(await _tmdbService.Extra(film.TmdbId.Value));
+
+            var extra = await _tmdbService.Extra(film.TmdbId.Value);
+            // I film collegati prima che esistesse la durata la ricevono alla prima apertura della scheda
+            if (film.DurataMinuti == null && extra.DurataMinuti != null)
+                await _filmService.ImpostaDurata(film, extra.DurataMinuti.Value);
+            return Ok(extra);
         }
 
         // Valorizza IdFilm sui film TMDB che sono già nel catalogo

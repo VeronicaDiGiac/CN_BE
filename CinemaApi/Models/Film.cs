@@ -22,6 +22,9 @@ namespace CinemaApi.Models
 
         public string Stato { get; set; } = "InAttesa";
 
+        // Minuti, da TMDB (null se non si conosce): serve alle statistiche "ore di cinema"
+        public int? DurataMinuti { get; set; }
+
         // Id del film su TMDB: null per i film inseriti a mano
         public int? TmdbId { get; set; }
 

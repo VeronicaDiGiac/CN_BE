@@ -13,6 +13,7 @@
         public double? VotoMedio { get; set; }
         public int NumeroRecensioni { get; set; }
         public int? TmdbId { get; set; }
+        public int? DurataMinuti { get; set; }
 
         // true se l'utente autenticato che chiama questo endpoint ha già
         // recensito questo film. Resta sempre false per chi non è loggato.

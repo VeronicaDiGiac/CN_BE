@@ -26,6 +26,8 @@ namespace CinemaApi.DTOs.ResponseDto
         public List<PiattaformaDto> Abbonamento { get; set; } = new();
         public List<PiattaformaDto> Noleggio { get; set; } = new();
         public List<PiattaformaDto> Acquisto { get; set; } = new();
+        // Minuti secondo TMDB (usata anche per completare Film.DurataMinuti)
+        public int? DurataMinuti { get; set; }
     }
 
     public class PiattaformaDto

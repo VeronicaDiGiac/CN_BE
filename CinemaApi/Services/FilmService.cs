@@ -39,6 +39,7 @@ namespace CinemaApi.Services
                     VotoMedio = f.Recensioni.Any() ? f.Recensioni.Average(r => r.Voto) : null,
                     NumeroRecensioni = f.Recensioni.Count(),
                     TmdbId = f.TmdbId,
+                    DurataMinuti = f.DurataMinuti,
                     GiaRecensito = idUtenteAutenticato != null &&
                                     f.Recensioni.Any(r => r.IdUtente == idUtenteAutenticato),
                     NumeroSpettatori = _db.Visioni.Where(v => v.IdFilm == f.IdFilm).Select(v => v.IdUtente).Distinct().Count(),
@@ -267,6 +268,12 @@ namespace CinemaApi.Services
             return true;
         }
 
+        public async Task ImpostaDurata(Film film, int minuti)
+        {
+            film.DurataMinuti = minuti;
+            await _db.SaveChangesAsync();
+        }
+
         // ---- TMDB ----
 
         // Mette nel catalogo un film TMDB (o restituisce quello che c'è già).
@@ -382,6 +389,7 @@ namespace CinemaApi.Services
             if (string.IsNullOrWhiteSpace(film.Attori)) film.Attori = Taglia(dati.Attori, 200);
             if (string.IsNullOrWhiteSpace(film.ImmagineUrl)) film.ImmagineUrl = dati.LocandinaUrl;
             if (string.IsNullOrWhiteSpace(film.Descrizione)) film.Descrizione = Taglia(dati.Descrizione, 4000);
+            film.DurataMinuti ??= dati.DurataMinuti;
         }
 
         // Le colonne del DB hanno una lunghezza massima: meglio tagliare che far fallire l'importazione

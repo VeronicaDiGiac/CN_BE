@@ -94,6 +94,8 @@ namespace CinemaApi.Services
             var extra = new FilmExtraDto();
             if (film != null)
             {
+                extra.DurataMinuti = film.Runtime > 0 ? film.Runtime : null;
+
                 // Trailer ufficiale su YouTube, preferendo quello italiano
                 extra.TrailerYoutube = film.Videos?.Results
                     .Where(v => v.Site == "YouTube" && v.Type == "Trailer" && !string.IsNullOrEmpty(v.Key))
@@ -164,7 +166,8 @@ namespace CinemaApi.Services
                 Genere = Unisci(film.Genres.Select(g => g.Name)),
                 Attori = Unisci(film.Credits?.Cast.OrderBy(c => c.Order).Take(5).Select(c => c.Name)),
                 LocandinaUrl = Immagine(film.PosterPath, "w500"),
-                Descrizione = trama
+                Descrizione = trama,
+                DurataMinuti = film.Runtime > 0 ? film.Runtime : null
             };
 
             _cache.Set(chiave, risultato, TimeSpan.FromHours(12));
@@ -226,12 +229,15 @@ namespace CinemaApi.Services
         {
             public List<Genere> Genres { get; set; } = new();
             public Crediti? Credits { get; set; }
+            // Minuti; 0 o assente se TMDB non lo conosce
+            public int? Runtime { get; set; }
         }
 
         private class Genere { public string? Name { get; set; } }
 
         private class RispostaExtra
         {
+            public int? Runtime { get; set; }
             public ElencoVideo? Videos { get; set; }
             // "watch/providers" non si converte in snake_case: nome esplicito
             [JsonPropertyName("watch/providers")]
@@ -294,5 +300,6 @@ namespace CinemaApi.Services
         public string? Attori { get; set; }
         public string? LocandinaUrl { get; set; }
         public string? Descrizione { get; set; }
+        public int? DurataMinuti { get; set; }
     }
 }

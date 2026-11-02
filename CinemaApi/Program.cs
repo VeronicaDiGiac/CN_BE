@@ -71,6 +71,7 @@ builder.Services.AddScoped<DaVedereService>();
 builder.Services.AddScoped<FeedService>();
 builder.Services.AddScoped<NotificheService>();
 builder.Services.AddScoped<ListeService>();
+builder.Services.AddScoped<StatisticheService>();
 
 // Errori imprevisti: gestiti tutti in Helpers/GestoreErrori.cs (niente try/catch nei controller)
 builder.Services.AddExceptionHandler<GestoreErrori>();
