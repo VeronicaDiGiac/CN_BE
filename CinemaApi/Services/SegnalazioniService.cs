@@ -43,6 +43,8 @@ namespace CinemaApi.Services
                             .Where(r => r.IdRecensione == s.IdContenuto)
                             .Select(r => (int?)r.IdFilm)
                             .FirstOrDefault()
+                        : s.TipoContenuto == TipiContenuto.Film
+                        ? (int?)s.IdContenuto
                         : s.TipoContenuto == TipiContenuto.Discussione
                         ? _db.Discussioni
                             .Where(d => d.IdDiscussione == s.IdContenuto)
@@ -63,6 +65,8 @@ namespace CinemaApi.Services
                 return await _db.Recensioni.AnyAsync(r => r.IdRecensione == idContenuto);
             if (tipoContenuto == TipiContenuto.Discussione)
                 return await _db.Discussioni.AnyAsync(d => d.IdDiscussione == idContenuto);
+            if (tipoContenuto == TipiContenuto.Film)
+                return await _db.FilmApprovatoEsiste(idContenuto);
             return await _db.Commenti.AnyAsync(c => c.IdCommento == idContenuto);
         }
 

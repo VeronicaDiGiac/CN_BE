@@ -196,6 +196,7 @@ namespace CinemaApi.Services
             await _db.EpisodiVisti.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdFilm == id).ExecuteDeleteAsync();
+            await _db.Segnalazioni.Where(s => s.TipoContenuto == TipiContenuto.Film && s.IdContenuto == id).ExecuteDeleteAsync();
             await _db.ListeFilm.Where(lf => lf.IdFilm == id).ExecuteDeleteAsync();
             _db.Film.Remove(film);
             await _db.SaveChangesAsync();
@@ -282,6 +283,10 @@ namespace CinemaApi.Services
                 .ExecuteDeleteAsync();
             await _db.EpisodiVisti.Where(v => v.IdFilm == idDaEliminare)
                 .ExecuteUpdateAsync(s => s.SetProperty(v => v.IdFilm, idDaTenere));
+
+            // Segnalazioni sulla scheda eliminata: passano a quella tenuta
+            await _db.Segnalazioni.Where(s => s.TipoContenuto == TipiContenuto.Film && s.IdContenuto == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.IdContenuto, idDaTenere));
 
             // Discussioni: passano tutte alla scheda tenuta
             await _db.Discussioni.Where(d => d.IdFilm == idDaEliminare)

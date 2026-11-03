@@ -98,6 +98,8 @@ namespace CinemaApi.Helpers
         public const string Recensione = "Recensione";
         public const string Commento = "Commento";
         public const string Discussione = "Discussione";
+        // Problema su una scheda film (dati sbagliati, doppione da eliminare…)
+        public const string Film = "Film";
     }
 
     // Ordinamenti delle discussioni (GET /api/discussioni/film/{id}?ordinamento=)

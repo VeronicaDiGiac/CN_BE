@@ -4,10 +4,10 @@ namespace CinemaApi.DTOs.RequestDto
 {
     public class CreateSegnalazioneDto
     {
-        // "Recensione", "Commento" o "Discussione". Validato anche lato DB dal CHECK constraint.
+        // "Recensione", "Commento", "Discussione" o "Film". Validato anche lato DB dal CHECK constraint.
         [Required]
         [MaxLength(20)]
-        [RegularExpression("^(Recensione|Commento|Discussione)$", ErrorMessage = "TipoContenuto non valido: usa Recensione, Commento o Discussione")]
+        [RegularExpression("^(Recensione|Commento|Discussione|Film)$", ErrorMessage = "TipoContenuto non valido: usa Recensione, Commento, Discussione o Film")]
         public string TipoContenuto { get; set; } = "";
 
         [Required]

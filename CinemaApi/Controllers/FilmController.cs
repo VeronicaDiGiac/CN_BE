@@ -93,7 +93,7 @@ namespace CinemaApi.Controllers
             var ruolo = User.Ruolo();
             var film = await _filmService.GetFilmById(id);
             if (film == null) return NotFound();
-            if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+            if (!AutorizzazioneHelper.PuoModificareFilm(film, idUtenteAutenticato, ruolo)) return Forbid();
             var aggiornato = await _filmService.UpdateFilm(id, dto);
             if (!aggiornato) return NotFound();
             return NoContent();
@@ -112,7 +112,7 @@ namespace CinemaApi.Controllers
             var ruolo = User.Ruolo();
             var film = await _filmService.GetFilmById(id);
             if (film == null) return NotFound();
-            if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+            if (!AutorizzazioneHelper.PuoModificareFilm(film, idUtenteAutenticato, ruolo)) return Forbid();
             var eliminato = await _filmService.DeleteFilm(id);
             if (!eliminato) return NotFound();
             return NoContent();
@@ -135,7 +135,7 @@ namespace CinemaApi.Controllers
             var ruolo = User.Ruolo();
             var film = await _filmService.GetFilmById(id);
             if (film == null) return NotFound();
-            if (!AutorizzazioneHelper.PuoModificare(film.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
+            if (!AutorizzazioneHelper.PuoModificareFilm(film, idUtenteAutenticato, ruolo)) return Forbid();
            
             var updateUrlImage = await _filmService.SaveImage(id, file);
             //Capire se lasciarlo il doppio controllo 
