@@ -9,12 +9,16 @@ namespace CinemaApi.Models
         [Key]
         public int IdNotifica { get; set; }
         public int IdDestinatario { get; set; }
-        public int IdMittente { get; set; }
+        // null per le notifiche di sistema (nuovo episodio)
+        public int? IdMittente { get; set; }
         // Uno dei valori di Helpers.TipiNotifica
         public required string Tipo { get; set; }
         public int? IdFilm { get; set; }
         public int? IdRecensione { get; set; }
         public int? IdCommento { get; set; }
+        // Solo per NuovoEpisodio
+        public int? Stagione { get; set; }
+        public int? Episodio { get; set; }
         public bool Letta { get; set; }
         public DateTime DataCreazione { get; set; }
 

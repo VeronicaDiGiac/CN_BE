@@ -73,6 +73,9 @@ builder.Services.AddScoped<NotificheService>();
 builder.Services.AddScoped<ListeService>();
 builder.Services.AddScoped<StatisticheService>();
 builder.Services.AddScoped<EpisodiService>();
+builder.Services.AddScoped<CalendarioSerieService>();
+// Controllo periodico dei nuovi episodi delle serie seguite (notifiche)
+builder.Services.AddHostedService<NuoviEpisodiWorker>();
 
 // Errori imprevisti: gestiti tutti in Helpers/GestoreErrori.cs (niente try/catch nei controller)
 builder.Services.AddExceptionHandler<GestoreErrori>();

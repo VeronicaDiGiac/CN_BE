@@ -8,7 +8,8 @@ namespace CinemaApi.DTOs.ResponseDto
         public bool Letta { get; set; }
         public DateTime DataCreazione { get; set; }
 
-        public int IdMittente { get; set; }
+        // null per le notifiche di sistema (nuovo episodio)
+        public int? IdMittente { get; set; }
         public string? UserNameMittente { get; set; }
         public string? AvatarMittente { get; set; }
 
@@ -16,5 +17,8 @@ namespace CinemaApi.DTOs.ResponseDto
         public string? TitoloFilm { get; set; }
         public int? IdRecensione { get; set; }
         public int? IdCommento { get; set; }
+        // Solo per NuovoEpisodio
+        public int? Stagione { get; set; }
+        public int? Episodio { get; set; }
     }
 }

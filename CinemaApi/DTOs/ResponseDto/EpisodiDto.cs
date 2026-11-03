@@ -33,6 +33,21 @@ namespace CinemaApi.DTOs.ResponseDto
         public string? DataUscita { get; set; }
     }
 
+    // Una puntata nel calendario delle serie seguite
+    public class PuntataCalendarioDto
+    {
+        public int IdFilm { get; set; }
+        public string? Titolo { get; set; }
+        public string? ImmagineUrl { get; set; }
+        public int Stagione { get; set; }
+        public int Episodio { get; set; }
+        public string? TitoloEpisodio { get; set; }
+        // 'YYYY-MM-DD'
+        public string DataUscita { get; set; } = "";
+        // L'utente l'ha già segnata come vista
+        public bool Visto { get; set; }
+    }
+
     // Una serie seguita da un utente (profilo: "Serie in corso", "In pari", "Completate")
     public class SerieUtenteDto
     {

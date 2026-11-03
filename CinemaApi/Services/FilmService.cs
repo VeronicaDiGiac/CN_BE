@@ -282,6 +282,11 @@ namespace CinemaApi.Services
             await _db.ListeFilm.Where(lf => lf.IdFilm == idDaEliminare)
                 .ExecuteUpdateAsync(s => s.SetProperty(lf => lf.IdFilm, idDaTenere));
 
+            var notificheEpisodiSulTenuto = _db.Notifiche.Where(n => n.IdFilm == idDaTenere && n.Tipo == TipiNotifica.NuovoEpisodio);
+            await _db.Notifiche
+                .Where(n => n.IdFilm == idDaEliminare && n.Tipo == TipiNotifica.NuovoEpisodio &&
+                            notificheEpisodiSulTenuto.Any(t => t.IdDestinatario == n.IdDestinatario && t.Stagione == n.Stagione && t.Episodio == n.Episodio))
+                .ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdFilm == idDaEliminare)
                 .ExecuteUpdateAsync(s => s.SetProperty(n => n.IdFilm, idDaTenere));
 

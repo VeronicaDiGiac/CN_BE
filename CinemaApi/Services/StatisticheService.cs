@@ -21,12 +21,19 @@ namespace CinemaApi.Services
 
         public async Task<StatisticheDto> GetStatistiche(int idUtente, int? anno)
         {
-            var anni = await _db.Visioni
-                .Where(v => v.IdUtente == idUtente)
-                .Select(v => v.DataVisione.Year)
-                .Distinct()
+            // Anni con almeno un film o un episodio visto
+            var anni = (await _db.Visioni
+                    .Where(v => v.IdUtente == idUtente)
+                    .Select(v => v.DataVisione.Year)
+                    .Distinct()
+                    .ToListAsync())
+                .Union(await _db.EpisodiVisti
+                    .Where(v => v.IdUtente == idUtente)
+                    .Select(v => v.DataVisione.Year)
+                    .Distinct()
+                    .ToListAsync())
                 .OrderByDescending(a => a)
-                .ToListAsync();
+                .ToList();
 
             var visioni = await _db.Visioni
                 .Where(v => v.IdUtente == idUtente && (anno == null || v.DataVisione.Year == anno))
@@ -43,6 +50,11 @@ namespace CinemaApi.Services
                 })
                 .ToListAsync();
 
+            var episodi = await _db.EpisodiVisti
+                .Where(v => v.IdUtente == idUtente && (anno == null || v.DataVisione.Year == anno))
+                .Select(v => new { v.IdFilm, v.DurataMinuti, v.Film!.Titolo, v.Film.ImmagineUrl })
+                .ToListAsync();
+
             var recensioni = await _db.Recensioni
                 .Where(r => r.IdUtente == idUtente && r.Voto != null
                             && (anno == null || (r.DataRecensione != null && r.DataRecensione.Value.Year == anno)))
@@ -57,6 +69,9 @@ namespace CinemaApi.Services
                 FilmDiversi = visioni.Select(v => v.IdFilm).Distinct().Count(),
                 MinutiTotali = visioni.Sum(v => v.DurataMinuti ?? 0),
                 VisioniConDurata = visioni.Count(v => v.DurataMinuti != null),
+                EpisodiVisti = episodi.Count,
+                SerieDiverse = episodi.Select(e => e.IdFilm).Distinct().Count(),
+                MinutiSerie = episodi.Sum(e => e.DurataMinuti ?? 0),
                 Recensioni = recensioni.Count,
                 VotoMedio = recensioni.Count > 0 ? Math.Round(recensioni.Average(r => r.Voto!.Value), 1) : null,
                 // Ogni film conta una volta anche se rivisto: "i generi che ho visto", non "quante volte"
@@ -81,6 +96,13 @@ namespace CinemaApi.Services
             {
                 var f = piuVisto.First();
                 stat.FilmPiuVisto = new FilmStatisticaDto { IdFilm = f.IdFilm, Titolo = f.Titolo, ImmagineUrl = f.ImmagineUrl, Dettaglio = piuVisto.Count().ToString() };
+            }
+
+            var seriePiuVista = episodi.GroupBy(e => e.IdFilm).OrderByDescending(g => g.Count()).FirstOrDefault();
+            if (seriePiuVista != null)
+            {
+                var s = seriePiuVista.First();
+                stat.SeriePiuVista = new FilmStatisticaDto { IdFilm = s.IdFilm, Titolo = s.Titolo, ImmagineUrl = s.ImmagineUrl, Dettaglio = seriePiuVista.Count().ToString() };
             }
 
             var votoPiuAlto = recensioni.OrderByDescending(r => r.Voto).ThenByDescending(r => r.DataRecensione).FirstOrDefault();

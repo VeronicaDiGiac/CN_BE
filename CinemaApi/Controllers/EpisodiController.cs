@@ -13,7 +13,28 @@ namespace CinemaApi.Controllers
     public class EpisodiController : ControllerBase
     {
         private readonly EpisodiService _episodiService;
-        public EpisodiController(EpisodiService episodiService) { _episodiService = episodiService; }
+        private readonly CalendarioSerieService _calendario;
+
+        public EpisodiController(EpisodiService episodiService, CalendarioSerieService calendario)
+        {
+            _episodiService = episodiService;
+            _calendario = calendario;
+        }
+
+        // Puntate uscite nell'ultima settimana e in arrivo delle serie seguite (iniziate o "Da vedere")
+        [HttpGet("calendario")]
+        [Authorize]
+        [ProducesResponseType(typeof(List<PuntataCalendarioDto>), 200)]
+        public async Task<IActionResult> Calendario() =>
+            Ok(await _calendario.Calendario(User.IdUtente()));
+
+        // Admin: crea subito le notifiche dei nuovi episodi (di solito lo fa il controllo
+        // periodico di NuoviEpisodiWorker). Restituisce quante ne ha create.
+        [HttpPost("notifica-nuovi")]
+        [Authorize(Roles = Ruoli.Admin)]
+        [ProducesResponseType(typeof(int), 200)]
+        public async Task<IActionResult> NotificaNuovi() =>
+            Ok(await _calendario.NotificaNuoviEpisodi());
 
         // Avanzamento dell'utente autenticato in una serie
         [HttpGet("serie/{idFilm}")]

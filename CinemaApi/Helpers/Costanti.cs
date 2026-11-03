@@ -61,6 +61,8 @@ namespace CinemaApi.Helpers
         public const string MiPiaceRecensione = "MiPiaceRecensione";
         public const string CommentoRecensione = "CommentoRecensione";
         public const string RispostaCommento = "RispostaCommento";
+        // Di sistema (senza mittente): è uscito un episodio di una serie che si sta guardando
+        public const string NuovoEpisodio = "NuovoEpisodio";
     }
 
     // Elenchi presi da TMDB per il catalogo (valori usati nell'URL: /api/tmdb/elenco/{categoria})

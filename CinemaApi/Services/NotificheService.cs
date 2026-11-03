@@ -56,12 +56,14 @@ namespace CinemaApi.Services
                     Letta = n.Letta,
                     DataCreazione = n.DataCreazione,
                     IdMittente = n.IdMittente,
-                    UserNameMittente = n.Mittente!.UserName,
-                    AvatarMittente = n.Mittente.AvatarUrl,
+                    UserNameMittente = n.Mittente != null ? n.Mittente.UserName : null,
+                    AvatarMittente = n.Mittente != null ? n.Mittente.AvatarUrl : null,
                     IdFilm = n.IdFilm,
                     TitoloFilm = _db.Film.Where(f => f.IdFilm == n.IdFilm).Select(f => f.Titolo).FirstOrDefault(),
                     IdRecensione = n.IdRecensione,
-                    IdCommento = n.IdCommento
+                    IdCommento = n.IdCommento,
+                    Stagione = n.Stagione,
+                    Episodio = n.Episodio
                 })
                 .ToListAsync();
 

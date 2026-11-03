@@ -13,6 +13,13 @@ namespace CinemaApi.DTOs.ResponseDto
         public int MinutiTotali { get; set; }
         public int VisioniConDurata { get; set; }
 
+        // Serie TV (episodi visti nel periodo)
+        public int EpisodiVisti { get; set; }
+        public int SerieDiverse { get; set; }
+        public int MinutiSerie { get; set; }
+        // La serie con più episodi visti nel periodo (Dettaglio = numero di episodi)
+        public FilmStatisticaDto? SeriePiuVista { get; set; }
+
         public int Recensioni { get; set; }
         public double? VotoMedio { get; set; }
 
