@@ -3,6 +3,8 @@ namespace CinemaApi.DTOs.ResponseDto
     public class FilmDettaglioDto
     {
         public int IdFilm { get; set; }
+        // Chi ha proposto il film (null per quelli importati da TMDB): può modificarlo ed eliminarlo
+        public int? IdUtente { get; set; }
         public string? Titolo { get; set; }
         public string? Regista { get; set; }
         public int? AnnoUscita { get; set; }

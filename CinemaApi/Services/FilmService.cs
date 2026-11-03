@@ -31,6 +31,7 @@ namespace CinemaApi.Services
                 .Select(f => new FilmDettaglioDto
                 {
                     IdFilm = f.IdFilm,
+                    IdUtente = f.IdUtente,
                     Titolo = f.Titolo,
                     Regista = f.Regista,
                     AnnoUscita = f.AnnoUscita,
