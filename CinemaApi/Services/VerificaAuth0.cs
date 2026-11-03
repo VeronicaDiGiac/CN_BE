@@ -20,8 +20,11 @@ namespace CinemaApi.Services
         private readonly string? _clientId;
         private readonly ConfigurationManager<OpenIdConnectConfiguration>? _configurazione;
 
-        public VerificaAuth0(IConfiguration config)
+        private readonly ILogger<VerificaAuth0> _logger;
+
+        public VerificaAuth0(IConfiguration config, ILogger<VerificaAuth0> logger)
         {
+            _logger = logger;
             var dominio = config["Auth0:Domain"];
             _clientId = config["Auth0:ClientId"];
             if (string.IsNullOrWhiteSpace(dominio) || string.IsNullOrWhiteSpace(_clientId)) return;
@@ -61,10 +64,19 @@ namespace CinemaApi.Services
             }
             catch (Exception ex) when (ex is SecurityTokenException or ArgumentException)
             {
+                // Solo il motivo, mai il token
+                _logger.LogWarning("Token di Auth0 rifiutato: {Motivo}", ex.Message);
                 return null;
             }
 
-            if (DateTime.UtcNow - token.ValidFrom > EtaMassimaToken + parametri.ClockSkew) return null;
+            // "Emesso il" è il claim iat. Non ValidFrom: quello è nbf, che Auth0 negli ID token non mette
+            // (senza, ValidFrom vale l'anno 1 e ogni token sembrerebbe vecchio)
+            var emesso = (token as JwtSecurityToken)?.IssuedAt ?? DateTime.MinValue;
+            if (emesso == DateTime.MinValue || DateTime.UtcNow - emesso > EtaMassimaToken + parametri.ClockSkew)
+            {
+                _logger.LogWarning("Token di Auth0 rifiutato: emesso il {Emesso:u}, troppo vecchio o senza data", emesso);
+                return null;
+            }
 
             string? Claim(string nome) => principale.FindFirst(nome)?.Value;
             return new UtenteAuth0(
