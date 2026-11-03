@@ -9,9 +9,10 @@ namespace CinemaApi.Helpers
         public static string Radice(IConfiguration config, IWebHostEnvironment ambiente)
         {
             var configurata = config["Uploads:Percorso"];
-            return string.IsNullOrWhiteSpace(configurata)
-                ? Path.Combine(ambiente.WebRootPath ?? Path.Combine(ambiente.ContentRootPath, "wwwroot"), "uploads")
-                : configurata;
+            if (string.IsNullOrWhiteSpace(configurata))
+                return Path.Combine(ambiente.WebRootPath ?? Path.Combine(ambiente.ContentRootPath, "wwwroot"), "uploads");
+            // Un percorso relativo (es. "dati/uploads") parte dalla cartella dell'app
+            return Path.IsPathRooted(configurata) ? configurata : Path.Combine(ambiente.ContentRootPath, configurata);
         }
 
         // true se le immagini stanno fuori da wwwroot (vanno servite a parte)
