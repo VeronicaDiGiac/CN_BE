@@ -91,6 +91,15 @@ namespace CinemaApi.Controllers
             return await Risposta(idFilm, EsitoEpisodi.Ok);
         }
 
+        // "Ho visto tutta la serie": tutti gli episodi già usciti
+        [HttpPut("serie/{idFilm}/tutta")]
+        [Authorize]
+        [ProducesResponseType(typeof(AvanzamentoSerieDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> SegnaTutta(int idFilm) =>
+            await Risposta(idFilm, await _episodiService.SegnaTutta(idFilm, User.IdUtente()));
+
         // L'episodio e tutti quelli usciti prima ("ho visto fino a qui")
         [HttpPut("serie/{idFilm}/fino-a/{stagione}/{episodio}")]
         [Authorize]

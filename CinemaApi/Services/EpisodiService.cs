@@ -110,6 +110,17 @@ namespace CinemaApi.Services
         }
 
         // L'episodio indicato e tutti quelli usciti prima (dalla stagione 1; gli speciali no)
+        // "Ho visto tutta la serie": tutti gli episodi già usciti (fino all'ultimo uscito, speciali esclusi)
+        public async Task<EsitoEpisodi> SegnaTutta(int idFilm, int idUtente)
+        {
+            var tmdbId = await TmdbIdSerie(idFilm);
+            if (tmdbId == null) return EsitoEpisodi.NonTrovato;
+            var struttura = await _tmdb.Struttura(tmdbId.Value);
+            if (struttura == null) return EsitoEpisodi.NonTrovato;
+            if (struttura.UltimoUscito is not { } ultimo) return EsitoEpisodi.NonUscito;
+            return await SegnaFinoA(idFilm, idUtente, ultimo.Stagione, ultimo.Episodio);
+        }
+
         public async Task<EsitoEpisodi> SegnaFinoA(int idFilm, int idUtente, int stagione, int episodio)
         {
             var tmdbId = await TmdbIdSerie(idFilm);
