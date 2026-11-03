@@ -90,6 +90,8 @@ namespace CinemaApi.Services
         {
             var utente = await _db.Utenti.FindAsync(idUtente);
             if (utente == null) return null;
+            // Chi è entrato solo con Google non ha una password: la crea con "Password dimenticata?"
+            if (string.IsNullOrEmpty(utente.PasswordHash)) return false;
 
             bool passwordCorretta = BCrypt.Net.BCrypt.Verify(dto.PasswordAttuale, utente.PasswordHash);
             if (!passwordCorretta) return false;
@@ -100,6 +102,47 @@ namespace CinemaApi.Services
             await _db.SaveChangesAsync();
             await InviaConfermaPasswordCambiata(utente);
             return true;
+        }
+
+        // Accesso con Google (tramite Auth0), dopo che VerificaAuth0 ha controllato il token.
+        // Se c'è già un utente con quell'email è lui (stessa persona: Google ha verificato l'email),
+        // altrimenti si crea un utente senza password. null se l'email non c'è o non è verificata.
+        public async Task<LoginResponseDto?> AccediConAuth0(UtenteAuth0 esterno)
+        {
+            if (!esterno.EmailVerificata || string.IsNullOrWhiteSpace(esterno.Email)) return null;
+            var email = esterno.Email.Trim();
+
+            var utente = await _db.Utenti.FirstOrDefaultAsync(u => u.Email == email);
+            if (utente == null)
+            {
+                utente = new Utente
+                {
+                    UserName = NomeUtente(esterno.Nome, email),
+                    Email = email,
+                    PasswordHash = null,
+                    Ruolo = Ruoli.User,
+                    DataDiRegistrazione = DateTime.Now
+                };
+                _db.Utenti.Add(utente);
+                try
+                {
+                    await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    // Due accessi contemporanei con la stessa email: l'utente l'ha creato l'altro (UQ_Email)
+                    _db.Entry(utente).State = EntityState.Detached;
+                    utente = await _db.Utenti.FirstAsync(u => u.Email == email);
+                }
+            }
+            return await CreaSessione(utente.IdUtente);
+        }
+
+        // Nome mostrato sul sito: quello dell'account Google, oppure la parte dell'email prima della @
+        private static string NomeUtente(string? nome, string email)
+        {
+            var testo = string.IsNullOrWhiteSpace(nome) ? email.Split('@')[0] : nome.Trim();
+            return testo.Length <= 50 ? testo : testo[..50];
         }
 
         // Nuovo token per chi ha appena cambiato la password dal profilo,

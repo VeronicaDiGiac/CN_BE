@@ -17,7 +17,30 @@ namespace CinemaApi.Controllers
         public const string LimitePasswordDimenticata = "password-dimenticata";
 
         private readonly AuthService _authService;
-        public AuthController(AuthService authService) { _authService = authService; }
+        private readonly VerificaAuth0 _verificaAuth0;
+
+        public AuthController(AuthService authService, VerificaAuth0 verificaAuth0)
+        {
+            _authService = authService;
+            _verificaAuth0 = verificaAuth0;
+        }
+
+        // Accesso con Google: il FE manda l'ID token ricevuto da Auth0 e riceve la solita sessione Cineverse
+        [HttpPost("esterno")]
+        [ProducesResponseType(typeof(LoginResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(503)]
+        public async Task<IActionResult> AccessoEsterno([FromBody] AccessoEsternoDto dto)
+        {
+            if (!_verificaAuth0.Configurato) return StatusCode(503, "Accesso con Google non configurato");
+            var esterno = await _verificaAuth0.Verifica(dto.IdToken);
+            if (esterno == null) return Unauthorized();
+
+            var risultato = await _authService.AccediConAuth0(esterno);
+            if (risultato == null) return BadRequest("L'account Google non ha un'email verificata");
+            return Ok(risultato);
+        }
 
         [HttpPost("login")]
         [ProducesResponseType(typeof(LoginResponseDto), 200)]
