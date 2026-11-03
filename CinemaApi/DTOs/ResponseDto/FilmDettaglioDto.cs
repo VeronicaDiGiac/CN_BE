@@ -13,7 +13,11 @@ namespace CinemaApi.DTOs.ResponseDto
         public double? VotoMedio { get; set; }
         public int NumeroRecensioni { get; set; }
         public int? TmdbId { get; set; }
+        // Per le serie: durata tipica di un episodio
         public int? DurataMinuti { get; set; }
+        // "Film" o "Serie"
+        public string Tipo { get; set; } = "";
+        public int? NumeroStagioni { get; set; }
 
         // true se l'utente autenticato che chiama questo endpoint ha già
         // recensito questo film. Resta sempre false per chi non è loggato.

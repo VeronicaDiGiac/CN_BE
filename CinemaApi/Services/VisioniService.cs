@@ -15,6 +15,9 @@ namespace CinemaApi.Services
 
         public Task<bool> FilmEsiste(int idFilm) => _db.FilmApprovatoEsiste(idFilm);
 
+        // Le serie non si segnano come viste per intero: si segnano gli episodi
+        public Task<bool> ESerie(int idFilm) => _db.Film.AnyAsync(f => f.IdFilm == idFilm && f.Tipo == TipiTitolo.Serie);
+
         public Task<Visione?> GetVisioneById(int id) => _db.Visioni.FindAsync(id).AsTask();
 
         // Diario di un utente, dalla visione più recente. Pubblico come il resto del profilo.

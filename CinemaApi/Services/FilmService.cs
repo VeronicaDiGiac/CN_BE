@@ -40,6 +40,8 @@ namespace CinemaApi.Services
                     NumeroRecensioni = f.Recensioni.Count(),
                     TmdbId = f.TmdbId,
                     DurataMinuti = f.DurataMinuti,
+                    Tipo = f.Tipo,
+                    NumeroStagioni = f.NumeroStagioni,
                     GiaRecensito = idUtenteAutenticato != null &&
                                     f.Recensioni.Any(r => r.IdUtente == idUtenteAutenticato),
                     NumeroSpettatori = _db.Visioni.Where(v => v.IdFilm == f.IdFilm).Select(v => v.IdUtente).Distinct().Count(),
@@ -83,7 +85,8 @@ namespace CinemaApi.Services
         // (pageSize) = quanti elementi devo SALTARE prima di iniziare a prendere
         // quelli della pagina richiesta.
 
-        public async Task<PagedResultDto<FilmDto>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize, string? ordinamento = null)
+        // tipo: TipiTitolo.Film, TipiTitolo.Serie oppure null per tutti
+        public async Task<PagedResultDto<FilmDto>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize, string? ordinamento = null, string? tipo = null)
         {
             //Da Ricordare : la query costruita non è ancora eseguita, la uso due volte, una volta per contare il totale una volta per prendere la pagina specifica, se eseguissi ToListAsync non si potrebbe contare niente.
             var query = _db.Film
@@ -92,6 +95,7 @@ namespace CinemaApi.Services
                 .Where(f => genere == null || f.Genere.Contains(genere))
                 .Where(f => annoUscita == null || f.AnnoUscita == annoUscita)
                 .Where(f => attori == null || f.Attori.Contains(attori))
+                .Where(f => tipo == null || f.Tipo == tipo)
                 .Where(f => f.Stato == StatiFilm.Approvato);
 
 
@@ -225,12 +229,13 @@ namespace CinemaApi.Services
         // Unisce due schede dello stesso film: tutto quello che riguarda "daEliminare" passa a
         // "daTenere", poi "daEliminare" viene cancellato. Dove lo stesso utente ha qualcosa su
         // entrambe (recensione, preferito, "da vedere", stessa lista) vince quella da tenere.
-        // false se uno dei due film non esiste.
-        public async Task<bool> UnisciFilm(int idDaTenere, int idDaEliminare)
+        // null se uno dei due non esiste, false se uno è un film e l'altro una serie.
+        public async Task<bool?> UnisciFilm(int idDaTenere, int idDaEliminare)
         {
             var tenere = await _db.Film.FindAsync(idDaTenere);
             var eliminare = await _db.Film.FindAsync(idDaEliminare);
-            if (tenere == null || eliminare == null) return false;
+            if (tenere == null || eliminare == null) return null;
+            if (tenere.Tipo != eliminare.Tipo) return false;
 
             using var transazione = await _db.Database.BeginTransactionAsync();
 
@@ -302,7 +307,7 @@ namespace CinemaApi.Services
         // I dati arrivano da TMDB, quindi il film è approvato subito e non ha un autore.
         public async Task<TmdbImportazioneDto> ImportaDaTmdb(FilmTmdb dati)
         {
-            var esistente = await _db.Film.FirstOrDefaultAsync(f => f.TmdbId == dati.TmdbId);
+            var esistente = await _db.Film.FirstOrDefaultAsync(f => f.TmdbId == dati.TmdbId && f.Tipo == dati.Tipo);
 
             // Film inserito a mano prima dell'integrazione: lo si collega invece di duplicarlo
             esistente ??= await TrovaGemelloManuale(dati);
@@ -316,7 +321,7 @@ namespace CinemaApi.Services
                 return new TmdbImportazioneDto { IdFilm = esistente.IdFilm, Creato = false };
             }
 
-            var film = new Film { TmdbId = dati.TmdbId, Stato = StatiFilm.Approvato };
+            var film = new Film { TmdbId = dati.TmdbId, Tipo = dati.Tipo, Stato = StatiFilm.Approvato };
             CompletaDaTmdb(film, dati);
             _db.Film.Add(film);
             try
@@ -325,9 +330,9 @@ namespace CinemaApi.Services
             }
             catch (DbUpdateException)
             {
-                // Due importazioni contemporanee dello stesso film: vince la prima (indice unico su TmdbId)
+                // Due importazioni contemporanee dello stesso film: vince la prima (indice unico su Tipo + TmdbId)
                 _db.Entry(film).State = EntityState.Detached;
-                var giaImportato = await _db.Film.FirstAsync(f => f.TmdbId == dati.TmdbId);
+                var giaImportato = await _db.Film.FirstAsync(f => f.TmdbId == dati.TmdbId && f.Tipo == dati.Tipo);
                 return new TmdbImportazioneDto { IdFilm = giaImportato.IdFilm, Creato = false };
             }
             return new TmdbImportazioneDto { IdFilm = film.IdFilm, Creato = true };
@@ -337,12 +342,13 @@ namespace CinemaApi.Services
         // in modo diverso ("Dune: Parte Due" / "Dune - Parte due") o è quello originale
         // ("Poor Things" / "Povere creature!"). L'anno deve coincidere, se il film manuale ce l'ha.
         private Task<Film?> TrovaGemelloManuale(FilmTmdb dati) =>
-            TrovaFilmSimile(new[] { dati.Titolo, dati.TitoloOriginale }, dati.AnnoUscita, soloSenzaTmdb: true);
+            TrovaFilmSimile(new[] { dati.Titolo, dati.TitoloOriginale }, dati.AnnoUscita, soloSenzaTmdb: true, tipo: dati.Tipo);
 
         // Film già presente con lo stesso titolo (a meno di maiuscole, accenti e punteggiatura,
         // vedi TitoliHelper.Chiave) e un anno compatibile: uguale, oppure mancante in uno dei due.
         // I film rifiutati non contano: si possono riproporre. Ricerca indicizzata su TitoloChiave.
-        private Task<Film?> TrovaFilmSimile(IEnumerable<string?> titoli, int? anno, bool soloSenzaTmdb = false)
+        // Film e serie con lo stesso titolo ("Fargo") non sono doppioni.
+        private Task<Film?> TrovaFilmSimile(IEnumerable<string?> titoli, int? anno, bool soloSenzaTmdb = false, string tipo = TipiTitolo.Film)
         {
             var chiavi = titoli
                 .Where(t => !string.IsNullOrWhiteSpace(t))
@@ -352,6 +358,7 @@ namespace CinemaApi.Services
 
             return _db.Film
                 .Where(f => f.TitoloChiave != null && chiavi.Contains(f.TitoloChiave))
+                .Where(f => f.Tipo == tipo)
                 .Where(f => f.Stato != StatiFilm.Rifiutato)
                 .Where(f => !soloSenzaTmdb || f.TmdbId == null)
                 .Where(f => anno == null || f.AnnoUscita == null || f.AnnoUscita == anno)
@@ -369,19 +376,20 @@ namespace CinemaApi.Services
             await _db.SaveChangesAsync();
         }
 
-        // TmdbId -> IdFilm per i film TMDB già presenti (e visibili) nel catalogo
-        public async Task<Dictionary<int, int>> IdFilmPerTmdb(IEnumerable<int> tmdbIds)
+        // TmdbId -> IdFilm per i titoli TMDB di un tipo già presenti (e visibili) nel catalogo
+        public async Task<Dictionary<int, int>> IdFilmPerTmdb(IEnumerable<int> tmdbIds, string tipo)
         {
             var ids = tmdbIds.ToList();
             return await _db.Film
-                .Where(f => f.TmdbId != null && ids.Contains(f.TmdbId.Value) && f.Stato == StatiFilm.Approvato)
+                .Where(f => f.TmdbId != null && ids.Contains(f.TmdbId.Value) && f.Tipo == tipo && f.Stato == StatiFilm.Approvato)
                 .ToDictionaryAsync(f => f.TmdbId!.Value, f => f.IdFilm);
         }
 
+        // Solo film: le serie arrivano sempre da TMDB
         public async Task<List<Film>> GetFilmSenzaTmdb()
         {
             return await _db.Film
-                .Where(f => f.TmdbId == null)
+                .Where(f => f.TmdbId == null && f.Tipo == TipiTitolo.Film)
                 .OrderBy(f => f.IdFilm)
                 .ToListAsync();
         }
@@ -392,7 +400,7 @@ namespace CinemaApi.Services
             var film = await _db.Film.FindAsync(idFilm);
             if (film == null) return null;
 
-            var giaUsato = await _db.Film.AnyAsync(f => f.TmdbId == dati.TmdbId && f.IdFilm != idFilm);
+            var giaUsato = await _db.Film.AnyAsync(f => f.TmdbId == dati.TmdbId && f.Tipo == dati.Tipo && f.IdFilm != idFilm);
             if (giaUsato) return false;
 
             film.TmdbId = dati.TmdbId;
@@ -412,6 +420,8 @@ namespace CinemaApi.Services
             if (string.IsNullOrWhiteSpace(film.ImmagineUrl)) film.ImmagineUrl = dati.LocandinaUrl;
             if (string.IsNullOrWhiteSpace(film.Descrizione)) film.Descrizione = Taglia(dati.Descrizione, 4000);
             film.DurataMinuti ??= dati.DurataMinuti;
+            // Le stagioni aumentano nel tempo: si prende sempre il valore di TMDB
+            if (dati.NumeroStagioni != null) film.NumeroStagioni = dati.NumeroStagioni;
         }
 
         // Le colonne del DB hanno una lunghezza massima: meglio tagliare che far fallire l'importazione

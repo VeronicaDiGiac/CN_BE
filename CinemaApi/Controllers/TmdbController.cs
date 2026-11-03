@@ -26,24 +26,28 @@ namespace CinemaApi.Controllers
             _filmService = filmService;
         }
 
-        // Ricerca pubblica su TMDB. Per i film già nel catalogo c'è anche IdFilm.
+        // Ricerca pubblica su TMDB di film (predefinito) o serie (tipo=Serie).
+        // Per i titoli già nel catalogo c'è anche IdFilm.
         [HttpGet("cerca")]
         [ProducesResponseType(typeof(TmdbRicercaDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(429)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> Cerca(string q, int pagina = 1)
+        public async Task<IActionResult> Cerca(string q, int pagina = 1, string? tipo = null)
         {
             if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 2)
                 return BadRequest("Scrivi almeno 2 caratteri");
             if (pagina < 1 || pagina > 500) return BadRequest("Pagina non valida");
+            var tipoTitolo = TipiTitolo.Normalizza(tipo ?? TipiTitolo.Film);
+            if (tipoTitolo == null) return BadRequest("Tipo non valido: Film o Serie");
 
-            var risultato = await _tmdbService.Cerca(q.Trim(), pagina);
+            var risultato = await _tmdbService.Cerca(q.Trim(), pagina, tipo: tipoTitolo);
             await SegnaGiaNelCatalogo(risultato);
             return Ok(risultato);
         }
 
-        // Elenchi pubblici per il catalogo: alcinema, tendenze, popolari, inarrivo (Helpers.CategorieTmdb)
+        // Elenchi pubblici per il catalogo: alcinema, tendenze, popolari, inarrivo,
+        // serie-tendenze, serie-popolari, serie-inonda (Helpers.CategorieTmdb)
         [HttpGet("elenco/{categoria}")]
         [ProducesResponseType(typeof(TmdbRicercaDto), 200)]
         [ProducesResponseType(400)]
@@ -60,7 +64,7 @@ namespace CinemaApi.Controllers
             return Ok(risultato);
         }
 
-        // Trailer e "dove guardarlo" di un film del catalogo (vuoto se non è collegato a TMDB)
+        // Trailer e "dove guardarlo" di un film o di una serie del catalogo (vuoto se non è collegato a TMDB)
         [HttpGet("film/{idFilm}/extra")]
         [ProducesResponseType(typeof(FilmExtraDto), 200)]
         [ProducesResponseType(404)]
@@ -71,32 +75,75 @@ namespace CinemaApi.Controllers
             if (film == null || film.Stato != StatiFilm.Approvato) return NotFound();
             if (film.TmdbId == null) return Ok(new FilmExtraDto());
 
-            var extra = await _tmdbService.Extra(film.TmdbId.Value);
+            var extra = await _tmdbService.Extra(film.TmdbId.Value, film.Tipo);
             // I film collegati prima che esistesse la durata la ricevono alla prima apertura della scheda
             if (film.DurataMinuti == null && extra.DurataMinuti != null)
                 await _filmService.ImpostaDurata(film, extra.DurataMinuti.Value);
             return Ok(extra);
         }
 
-        // Valorizza IdFilm sui film TMDB che sono già nel catalogo
-        private async Task SegnaGiaNelCatalogo(TmdbRicercaDto risultato)
+        // Stagioni di una serie del catalogo
+        [HttpGet("serie/{idFilm}/stagioni")]
+        [ProducesResponseType(typeof(List<StagioneDto>), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(429)]
+        public async Task<IActionResult> Stagioni(int idFilm)
         {
-            var giaPresenti = await _filmService.IdFilmPerTmdb(risultato.Risultati.Select(r => r.TmdbId));
-            foreach (var r in risultato.Risultati)
-                r.IdFilm = giaPresenti.TryGetValue(r.TmdbId, out var idFilm) ? idFilm : null;
+            var tmdbId = await TmdbIdSerie(idFilm);
+            if (tmdbId == null) return NotFound("Serie non trovata");
+            var stagioni = await _tmdbService.Stagioni(tmdbId.Value);
+            return stagioni == null ? NotFound("Serie non trovata su TMDB") : Ok(stagioni);
         }
 
-        // Porta un film TMDB nel catalogo (se non c'è già) e restituisce il suo IdFilm.
-        // Pubblico: anche chi non è registrato deve poter aprire la scheda di un film.
+        // Episodi di una stagione di una serie del catalogo
+        [HttpGet("serie/{idFilm}/stagioni/{numero}")]
+        [ProducesResponseType(typeof(StagioneDettaglioDto), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(429)]
+        public async Task<IActionResult> Stagione(int idFilm, int numero)
+        {
+            if (numero < 0) return NotFound("Stagione non trovata");
+            var tmdbId = await TmdbIdSerie(idFilm);
+            if (tmdbId == null) return NotFound("Serie non trovata");
+            var stagione = await _tmdbService.Stagione(tmdbId.Value, numero);
+            return stagione == null ? NotFound("Stagione non trovata") : Ok(stagione);
+        }
+
+        // Id TMDB di una serie visibile nel catalogo; null se non è una serie o non è collegata
+        private async Task<int?> TmdbIdSerie(int idFilm)
+        {
+            var film = await _filmService.GetFilmById(idFilm);
+            return film != null && film.Stato == StatiFilm.Approvato && film.Tipo == TipiTitolo.Serie ? film.TmdbId : null;
+        }
+
+        // Valorizza IdFilm sui titoli TMDB che sono già nel catalogo (film e serie hanno id separati)
+        private async Task SegnaGiaNelCatalogo(TmdbRicercaDto risultato)
+        {
+            foreach (var gruppo in risultato.Risultati.GroupBy(r => r.Tipo))
+            {
+                var giaPresenti = await _filmService.IdFilmPerTmdb(gruppo.Select(r => r.TmdbId), gruppo.Key);
+                foreach (var r in gruppo)
+                    r.IdFilm = giaPresenti.TryGetValue(r.TmdbId, out var idFilm) ? idFilm : null;
+            }
+        }
+
+        // Porta un film (o una serie, con tipo=Serie) TMDB nel catalogo se non c'è già
+        // e restituisce il suo IdFilm. Pubblico: anche chi non è registrato deve poter aprire la scheda.
         [HttpPost("importa/{tmdbId}")]
         [ProducesResponseType(typeof(TmdbImportazioneDto), 200)]
+        [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [ProducesResponseType(429)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> Importa(int tmdbId)
+        public async Task<IActionResult> Importa(int tmdbId, string? tipo = null)
         {
-            var dati = await _tmdbService.Dettaglio(tmdbId);
-            if (dati == null) return NotFound("Film non trovato su TMDB");
+            var tipoTitolo = TipiTitolo.Normalizza(tipo ?? TipiTitolo.Film);
+            if (tipoTitolo == null) return BadRequest("Tipo non valido: Film o Serie");
+
+            var dati = tipoTitolo == TipiTitolo.Serie
+                ? await _tmdbService.DettaglioSerie(tmdbId)
+                : await _tmdbService.Dettaglio(tmdbId);
+            if (dati == null) return NotFound(tipoTitolo == TipiTitolo.Serie ? "Serie non trovata su TMDB" : "Film non trovato su TMDB");
 
             var risultato = await _filmService.ImportaDaTmdb(dati);
             return Ok(risultato);

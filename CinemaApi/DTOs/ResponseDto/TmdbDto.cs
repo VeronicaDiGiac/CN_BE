@@ -4,8 +4,11 @@ namespace CinemaApi.DTOs.ResponseDto
     public class TmdbRisultatoDto
     {
         public int TmdbId { get; set; }
+        // "Film" o "Serie": su TMDB hanno numerazioni separate, l'id da solo non basta
+        public string Tipo { get; set; } = "";
         public string Titolo { get; set; } = "";
         public string? TitoloOriginale { get; set; }
+        // Per le serie: anno della prima puntata
         public int? AnnoUscita { get; set; }
         // Data completa 'YYYY-MM-DD' (serve per le uscite in arrivo)
         public string? DataUscita { get; set; }
@@ -42,6 +45,37 @@ namespace CinemaApi.DTOs.ResponseDto
         public int TotalePagine { get; set; }
         public int TotaleRisultati { get; set; }
         public List<TmdbRisultatoDto> Risultati { get; set; } = new();
+    }
+
+    // Una stagione di una serie (elenco nella scheda)
+    public class StagioneDto
+    {
+        // 0 = episodi speciali
+        public int Numero { get; set; }
+        public string Nome { get; set; } = "";
+        public int NumeroEpisodi { get; set; }
+        public string? DataUscita { get; set; }
+        public string? LocandinaUrl { get; set; }
+    }
+
+    // Una stagione con i suoi episodi
+    public class StagioneDettaglioDto
+    {
+        public int Numero { get; set; }
+        public string Nome { get; set; } = "";
+        public string? Descrizione { get; set; }
+        public List<EpisodioDto> Episodi { get; set; } = new();
+    }
+
+    public class EpisodioDto
+    {
+        public int Numero { get; set; }
+        public string Titolo { get; set; } = "";
+        // 'YYYY-MM-DD'; null se non è ancora stata annunciata
+        public string? DataUscita { get; set; }
+        public int? DurataMinuti { get; set; }
+        public string? Descrizione { get; set; }
+        public string? ImmagineUrl { get; set; }
     }
 
     // Risposta dell'importazione: id del film nel catalogo

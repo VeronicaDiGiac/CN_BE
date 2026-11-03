@@ -35,23 +35,35 @@ namespace CinemaApi.Services
             _config = config;
         }
 
-        public Task<TmdbRicercaDto> Cerca(string testo, int pagina = 1, int? anno = null)
+        // tipo: TipiTitolo.Film o TipiTitolo.Serie
+        public Task<TmdbRicercaDto> Cerca(string testo, int pagina = 1, int? anno = null, string tipo = TipiTitolo.Film)
         {
-            var url = $"search/movie?query={Uri.EscapeDataString(testo)}&page={pagina}&language={Lingua}&include_adult=false";
-            if (anno != null) url += $"&primary_release_year={anno}";
-            return ElencoFilm(url, $"tmdb:cerca:{testo.ToLowerInvariant()}:{pagina}:{anno}", TimeSpan.FromMinutes(10));
+            var serie = tipo == TipiTitolo.Serie;
+            var url = $"search/{Percorso(tipo)}?query={Uri.EscapeDataString(testo)}&page={pagina}&language={Lingua}&include_adult=false";
+            if (anno != null) url += serie ? $"&first_air_date_year={anno}" : $"&primary_release_year={anno}";
+            return ElencoTmdb(url, $"tmdb:cerca:{tipo}:{testo.ToLowerInvariant()}:{pagina}:{anno}", TimeSpan.FromMinutes(10), tipo);
         }
+
+        // Su TMDB i film stanno sotto /movie, le serie sotto /tv
+        private static string Percorso(string tipo) => tipo == TipiTitolo.Serie ? "tv" : "movie";
 
         // Elenchi per il catalogo (Helpers.CategorieTmdb). null se la categoria non esiste.
         public Task<TmdbRicercaDto>? Elenco(string categoria, int pagina = 1) => categoria switch
         {
-            CategorieTmdb.AlCinema => ElencoFilm($"movie/now_playing?language={Lingua}&region={Regione}&page={pagina}",
-                $"tmdb:alcinema:{pagina}", TimeSpan.FromHours(6)),
-            CategorieTmdb.Tendenze => ElencoFilm($"trending/movie/week?language={Lingua}&page={pagina}",
-                $"tmdb:tendenze:{pagina}", TimeSpan.FromHours(6)),
-            CategorieTmdb.Popolari => ElencoFilm($"movie/popular?language={Lingua}&region={Regione}&page={pagina}",
-                $"tmdb:popolari:{pagina}", TimeSpan.FromHours(6)),
+            CategorieTmdb.AlCinema => ElencoTmdb($"movie/now_playing?language={Lingua}&region={Regione}&page={pagina}",
+                $"tmdb:alcinema:{pagina}", TimeSpan.FromHours(6), TipiTitolo.Film),
+            CategorieTmdb.Tendenze => ElencoTmdb($"trending/movie/week?language={Lingua}&page={pagina}",
+                $"tmdb:tendenze:{pagina}", TimeSpan.FromHours(6), TipiTitolo.Film),
+            CategorieTmdb.Popolari => ElencoTmdb($"movie/popular?language={Lingua}&region={Regione}&page={pagina}",
+                $"tmdb:popolari:{pagina}", TimeSpan.FromHours(6), TipiTitolo.Film),
             CategorieTmdb.InArrivo => UsciteInArrivo(pagina),
+            CategorieTmdb.SerieTendenze => ElencoTmdb($"trending/tv/week?language={Lingua}&page={pagina}",
+                $"tmdb:serie-tendenze:{pagina}", TimeSpan.FromHours(6), TipiTitolo.Serie),
+            CategorieTmdb.SeriePopolari => ElencoTmdb($"tv/popular?language={Lingua}&page={pagina}",
+                $"tmdb:serie-popolari:{pagina}", TimeSpan.FromHours(6), TipiTitolo.Serie),
+            // Serie con un episodio in uscita nei prossimi 7 giorni
+            CategorieTmdb.SerieInOnda => ElencoTmdb($"tv/on_the_air?language={Lingua}&timezone=Europe/Rome&page={pagina}",
+                $"tmdb:serie-inonda:{pagina}", TimeSpan.FromHours(6), TipiTitolo.Serie),
             _ => null
         };
 
@@ -60,8 +72,8 @@ namespace CinemaApi.Services
         // in "In arrivo" confonderebbero, quindi si tengono solo le prime uscite dall'ultima settimana in poi.
         private async Task<TmdbRicercaDto> UsciteInArrivo(int pagina)
         {
-            var elenco = await ElencoFilm($"movie/upcoming?language={Lingua}&region={Regione}&page={pagina}",
-                $"tmdb:uscite:{pagina}", TimeSpan.FromHours(6));
+            var elenco = await ElencoTmdb($"movie/upcoming?language={Lingua}&region={Regione}&page={pagina}",
+                $"tmdb:uscite:{pagina}", TimeSpan.FromHours(6), TipiTitolo.Film);
             var daQuando = DateTime.Today.AddDays(-7).ToString("yyyy-MM-dd");
             elenco.Risultati = elenco.Risultati
                 .Where(r => r.DataUscita != null && string.CompareOrdinal(r.DataUscita, daQuando) >= 0)
@@ -70,8 +82,9 @@ namespace CinemaApi.Services
             return elenco;
         }
 
-        // Qualsiasi elenco di film TMDB (ricerca, uscite…) convertito nei nostri DTO, con cache
-        private async Task<TmdbRicercaDto> ElencoFilm(string url, string chiaveCache, TimeSpan durataCache)
+        // Qualsiasi elenco TMDB di film o di serie (ricerca, uscite…) convertito nei nostri DTO, con cache.
+        // Le serie hanno name / first_air_date al posto di title / release_date.
+        private async Task<TmdbRicercaDto> ElencoTmdb(string url, string chiaveCache, TimeSpan durataCache, string tipo)
         {
             if (_cache.TryGetValue(chiaveCache, out TmdbRicercaDto? inCache) && inCache != null) return Copia(inCache);
 
@@ -84,10 +97,11 @@ namespace CinemaApi.Services
                 Risultati = risposta.Results.Select(r => new TmdbRisultatoDto
                 {
                     TmdbId = r.Id,
-                    Titolo = r.Title ?? r.OriginalTitle ?? "",
-                    TitoloOriginale = r.OriginalTitle,
-                    AnnoUscita = Anno(r.ReleaseDate),
-                    DataUscita = string.IsNullOrEmpty(r.ReleaseDate) ? null : r.ReleaseDate,
+                    Tipo = tipo,
+                    Titolo = r.Title ?? r.Name ?? r.OriginalTitle ?? r.OriginalName ?? "",
+                    TitoloOriginale = r.OriginalTitle ?? r.OriginalName,
+                    AnnoUscita = Anno(r.ReleaseDate ?? r.FirstAirDate),
+                    DataUscita = string.IsNullOrEmpty(r.ReleaseDate ?? r.FirstAirDate) ? null : r.ReleaseDate ?? r.FirstAirDate,
                     LocandinaUrl = Immagine(r.PosterPath, "w342"),
                     Descrizione = r.Overview
                 }).ToList()
@@ -97,18 +111,20 @@ namespace CinemaApi.Services
             return Copia(risultato);
         }
 
-        // Trailer e piattaforme italiane di un film (dati "dove guardarlo" di JustWatch tramite TMDB)
-        public async Task<FilmExtraDto> Extra(int tmdbId)
+        // Trailer e piattaforme italiane di un film o di una serie (dati "dove guardarlo" di JustWatch tramite TMDB)
+        public async Task<FilmExtraDto> Extra(int tmdbId, string tipo = TipiTitolo.Film)
         {
-            var chiave = $"tmdb:extra:{tmdbId}";
+            var chiave = $"tmdb:extra:{tipo}:{tmdbId}";
             if (_cache.TryGetValue(chiave, out FilmExtraDto? inCache) && inCache != null) return inCache;
 
             var film = await Get<RispostaExtra>(
-                $"movie/{tmdbId}?language={Lingua}&append_to_response=videos,watch/providers&include_video_language=it,en,null");
+                $"{Percorso(tipo)}/{tmdbId}?language={Lingua}&append_to_response=videos,watch/providers&include_video_language=it,en,null");
             var extra = new FilmExtraDto();
             if (film != null)
             {
-                extra.DurataMinuti = film.Runtime > 0 ? film.Runtime : null;
+                // Per le serie: durata tipica di un episodio
+                var durata = film.Runtime ?? film.EpisodeRunTime?.FirstOrDefault();
+                extra.DurataMinuti = durata > 0 ? durata : null;
 
                 // Trailer ufficiale su YouTube, preferendo quello italiano
                 extra.TrailerYoutube = film.Videos?.Results
@@ -147,6 +163,7 @@ namespace CinemaApi.Services
             Risultati = r.Risultati.Select(x => new TmdbRisultatoDto
             {
                 TmdbId = x.TmdbId,
+                Tipo = x.Tipo,
                 Titolo = x.Titolo,
                 TitoloOriginale = x.TitoloOriginale,
                 AnnoUscita = x.AnnoUscita,
@@ -186,6 +203,97 @@ namespace CinemaApi.Services
 
             _cache.Set(chiave, risultato, TimeSpan.FromHours(12));
             return risultato;
+        }
+
+        // ---- Serie TV ----
+
+        // Dati di una serie convertiti nei campi del catalogo; null se non esiste su TMDB.
+        // "Regista" per le serie sono gli ideatori.
+        public async Task<FilmTmdb?> DettaglioSerie(int tmdbId)
+        {
+            var serie = await GetSerie(tmdbId);
+            if (serie == null) return null;
+
+            var trama = serie.Overview;
+            if (string.IsNullOrWhiteSpace(trama))
+                trama = (await Get<RispostaSerie>($"tv/{tmdbId}?language=en-US"))?.Overview;
+
+            var durata = serie.EpisodeRunTime.FirstOrDefault();
+            return new FilmTmdb
+            {
+                Tipo = TipiTitolo.Serie,
+                TmdbId = serie.Id,
+                Titolo = serie.Name ?? serie.OriginalName ?? "",
+                TitoloOriginale = serie.OriginalName,
+                AnnoUscita = Anno(serie.FirstAirDate),
+                Regista = Unisci(serie.CreatedBy.Select(c => c.Name)),
+                Genere = Unisci(serie.Genres.Select(g => g.Name)),
+                Attori = Unisci(serie.AggregateCredits?.Cast.OrderBy(c => c.Order).Take(5).Select(c => c.Name)),
+                LocandinaUrl = Immagine(serie.PosterPath, "w500"),
+                Descrizione = trama,
+                DurataMinuti = durata > 0 ? durata : null,
+                NumeroStagioni = serie.NumberOfSeasons > 0 ? serie.NumberOfSeasons : null
+            };
+        }
+
+        // Stagioni di una serie, gli episodi speciali (stagione 0) in fondo; null se la serie non esiste
+        public async Task<List<StagioneDto>?> Stagioni(int tmdbId)
+        {
+            var serie = await GetSerie(tmdbId);
+            return serie?.Seasons
+                .OrderBy(s => s.SeasonNumber == 0 ? int.MaxValue : s.SeasonNumber)
+                .Select(s => new StagioneDto
+                {
+                    Numero = s.SeasonNumber,
+                    Nome = s.Name ?? $"Stagione {s.SeasonNumber}",
+                    NumeroEpisodi = s.EpisodeCount,
+                    DataUscita = string.IsNullOrEmpty(s.AirDate) ? null : s.AirDate,
+                    LocandinaUrl = Immagine(s.PosterPath, "w185")
+                })
+                .ToList();
+        }
+
+        // Episodi di una stagione; null se la serie o la stagione non esistono
+        public async Task<StagioneDettaglioDto?> Stagione(int tmdbId, int numero)
+        {
+            var chiave = $"tmdb:stagione:{tmdbId}:{numero}";
+            if (_cache.TryGetValue(chiave, out StagioneDettaglioDto? inCache) && inCache != null) return inCache;
+
+            var stagione = await Get<RispostaStagione>($"tv/{tmdbId}/season/{numero}?language={Lingua}");
+            if (stagione == null) return null;
+
+            var risultato = new StagioneDettaglioDto
+            {
+                Numero = stagione.SeasonNumber,
+                Nome = stagione.Name ?? $"Stagione {stagione.SeasonNumber}",
+                Descrizione = string.IsNullOrWhiteSpace(stagione.Overview) ? null : stagione.Overview,
+                Episodi = stagione.Episodes
+                    .OrderBy(e => e.EpisodeNumber)
+                    .Select(e => new EpisodioDto
+                    {
+                        Numero = e.EpisodeNumber,
+                        Titolo = string.IsNullOrWhiteSpace(e.Name) ? $"Episodio {e.EpisodeNumber}" : e.Name,
+                        DataUscita = string.IsNullOrEmpty(e.AirDate) ? null : e.AirDate,
+                        DurataMinuti = e.Runtime > 0 ? e.Runtime : null,
+                        Descrizione = string.IsNullOrWhiteSpace(e.Overview) ? null : e.Overview,
+                        ImmagineUrl = Immagine(e.StillPath, "w300")
+                    })
+                    .ToList()
+            };
+            // Le stagioni in corso cambiano spesso (nuovi episodi, titoli, date)
+            _cache.Set(chiave, risultato, TimeSpan.FromHours(6));
+            return risultato;
+        }
+
+        // Risposta completa di TMDB per una serie, in cache: la usano dettaglio e stagioni
+        private async Task<RispostaSerie?> GetSerie(int tmdbId)
+        {
+            var chiave = $"tmdb:serie:{tmdbId}";
+            if (_cache.TryGetValue(chiave, out RispostaSerie? inCache) && inCache != null) return inCache;
+
+            var serie = await Get<RispostaSerie>($"tv/{tmdbId}?language={Lingua}&append_to_response=aggregate_credits");
+            if (serie != null) _cache.Set(chiave, serie, TimeSpan.FromHours(6));
+            return serie;
         }
 
         // null se TMDB risponde 404
@@ -232,11 +340,54 @@ namespace CinemaApi.Services
         private class RisultatoRicerca
         {
             public int Id { get; set; }
+            // Film
             public string? Title { get; set; }
             public string? OriginalTitle { get; set; }
             public string? ReleaseDate { get; set; }
+            // Serie
+            public string? Name { get; set; }
+            public string? OriginalName { get; set; }
+            public string? FirstAirDate { get; set; }
+
             public string? PosterPath { get; set; }
             public string? Overview { get; set; }
+        }
+
+        private class RispostaSerie : RisultatoRicerca
+        {
+            public List<Genere> Genres { get; set; } = new();
+            public List<Persona> CreatedBy { get; set; } = new();
+            public Crediti? AggregateCredits { get; set; }
+            public List<int> EpisodeRunTime { get; set; } = new();
+            public int NumberOfSeasons { get; set; }
+            public List<StagioneTmdb> Seasons { get; set; } = new();
+        }
+
+        private class StagioneTmdb
+        {
+            public int SeasonNumber { get; set; }
+            public string? Name { get; set; }
+            public int EpisodeCount { get; set; }
+            public string? AirDate { get; set; }
+            public string? PosterPath { get; set; }
+        }
+
+        private class RispostaStagione
+        {
+            public int SeasonNumber { get; set; }
+            public string? Name { get; set; }
+            public string? Overview { get; set; }
+            public List<EpisodioTmdb> Episodes { get; set; } = new();
+        }
+
+        private class EpisodioTmdb
+        {
+            public int EpisodeNumber { get; set; }
+            public string? Name { get; set; }
+            public string? AirDate { get; set; }
+            public int? Runtime { get; set; }
+            public string? Overview { get; set; }
+            public string? StillPath { get; set; }
         }
 
         private class RispostaFilm : RisultatoRicerca
@@ -252,6 +403,8 @@ namespace CinemaApi.Services
         private class RispostaExtra
         {
             public int? Runtime { get; set; }
+            // Solo serie: durate tipiche degli episodi
+            public List<int>? EpisodeRunTime { get; set; }
             public ElencoVideo? Videos { get; set; }
             // "watch/providers" non si converte in snake_case: nome esplicito
             [JsonPropertyName("watch/providers")]
@@ -302,9 +455,11 @@ namespace CinemaApi.Services
         }
     }
 
-    // Dati di un film TMDB già convertiti nei campi del nostro catalogo
+    // Dati di un film o di una serie TMDB già convertiti nei campi del nostro catalogo
     public class FilmTmdb
     {
+        public string Tipo { get; set; } = TipiTitolo.Film;
+        public int? NumeroStagioni { get; set; }
         public int TmdbId { get; set; }
         public string Titolo { get; set; } = "";
         public string? TitoloOriginale { get; set; }

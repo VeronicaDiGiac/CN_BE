@@ -16,6 +16,20 @@ namespace CinemaApi.Helpers
         public const string Rifiutato = "Rifiutato";
     }
 
+    // Tipo di titolo del catalogo (CHECK constraint di Film.Tipo)
+    public static class TipiTitolo
+    {
+        public const string Film = "Film";
+        public const string Serie = "Serie";
+
+        // Valore della query string (?tipo=serie, ?tipo=Film…) nella forma salvata nel DB;
+        // null se non è un tipo valido
+        public static string? Normalizza(string? valore) =>
+            string.Equals(valore, Film, StringComparison.OrdinalIgnoreCase) ? Film
+            : string.Equals(valore, Serie, StringComparison.OrdinalIgnoreCase) ? Serie
+            : null;
+    }
+
     // Tipi di voce del feed delle attività
     public static class TipiAttivita
     {
@@ -32,15 +46,20 @@ namespace CinemaApi.Helpers
         public const string RispostaCommento = "RispostaCommento";
     }
 
-    // Elenchi di film presi da TMDB per il catalogo (valori usati nell'URL: /api/tmdb/elenco/{categoria})
+    // Elenchi presi da TMDB per il catalogo (valori usati nell'URL: /api/tmdb/elenco/{categoria})
     public static class CategorieTmdb
     {
+        // Film
         public const string AlCinema = "alcinema";
         public const string Tendenze = "tendenze";
         public const string Popolari = "popolari";
         public const string InArrivo = "inarrivo";
+        // Serie TV
+        public const string SerieTendenze = "serie-tendenze";
+        public const string SeriePopolari = "serie-popolari";
+        public const string SerieInOnda = "serie-inonda";
 
-        public static readonly string[] Tutte = { AlCinema, Tendenze, Popolari, InArrivo };
+        public static readonly string[] Tutte = { AlCinema, Tendenze, Popolari, InArrivo, SerieTendenze, SeriePopolari, SerieInOnda };
     }
 
     // Ordinamenti dell'elenco del catalogo (GET /api/film?ordinamento=)

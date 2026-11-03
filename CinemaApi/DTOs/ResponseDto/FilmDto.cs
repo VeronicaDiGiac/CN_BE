@@ -18,6 +18,9 @@ namespace CinemaApi.DTOs.ResponseDto
         public string? ImmagineUrl { get; set; }
         public string? Descrizione { get; set; }
         public string Stato { get; set; } = "";
+        // "Film" o "Serie"
+        public string Tipo { get; set; } = "";
+        public int? NumeroStagioni { get; set; }
         public int? DurataMinuti { get; set; }
         public int? TmdbId { get; set; }
         public double? VotoMedio { get; set; }
@@ -36,6 +39,8 @@ namespace CinemaApi.DTOs.ResponseDto
             ImmagineUrl = f.ImmagineUrl,
             Descrizione = f.Descrizione,
             Stato = f.Stato,
+            Tipo = f.Tipo,
+            NumeroStagioni = f.NumeroStagioni,
             DurataMinuti = f.DurataMinuti,
             TmdbId = f.TmdbId,
             VotoMedio = f.Recensioni!.Average(r => (double?)r.Voto),

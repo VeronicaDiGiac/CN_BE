@@ -1,4 +1,4 @@
-﻿using CinemaApi.Models;
+using CinemaApi.Models;
 using System.ComponentModel.DataAnnotations;
 
 namespace CinemaApi.Models
@@ -21,6 +21,12 @@ namespace CinemaApi.Models
         public string? Descrizione { get; set; }
 
         public string Stato { get; set; } = "InAttesa";
+
+        // "Film" o "Serie" (Helpers.TipiTitolo): le serie TV stanno nella stessa tabella
+        public string Tipo { get; set; } = "Film";
+
+        // Solo per le serie: numero di stagioni secondo TMDB
+        public int? NumeroStagioni { get; set; }
 
         // Minuti, da TMDB (null se non si conosce): serve alle statistiche "ore di cinema"
         public int? DurataMinuti { get; set; }

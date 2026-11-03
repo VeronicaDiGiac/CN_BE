@@ -35,9 +35,13 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(typeof(PagedResultDto<FilmDto>), 200)]
         [ProducesResponseType(500)]
         // ordinamento: recenti (predefinito), voto, titolo (Helpers.OrdinamentiCatalogo)
-        public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber = 1, int pageSize = 20, string? ordinamento = null)
+        // tipo: Film o Serie (Helpers.TipiTitolo); senza, tutti i titoli
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber = 1, int pageSize = 20, string? ordinamento = null, string? tipo = null)
         {
-            var risultato = await _filmService.GetFilm(titolo, regista, annoUscita, genere, attori, pageNumber, pageSize, ordinamento);
+            var tipoTitolo = TipiTitolo.Normalizza(tipo);
+            if (tipo != null && tipoTitolo == null) return BadRequest("Tipo non valido: Film o Serie");
+            var risultato = await _filmService.GetFilm(titolo, regista, annoUscita, genere, attori, pageNumber, pageSize, ordinamento, tipoTitolo);
             return Ok(risultato);
         }
 
@@ -172,7 +176,9 @@ namespace CinemaApi.Controllers
         public async Task<IActionResult> Unisci(int id, int idDaEliminare)
         {
             if (id == idDaEliminare) return BadRequest("Scegli due film diversi");
-            if (!await _filmService.UnisciFilm(id, idDaEliminare)) return NotFound("Film non trovato");
+            var esito = await _filmService.UnisciFilm(id, idDaEliminare);
+            if (esito == null) return NotFound("Film non trovato");
+            if (esito == false) return BadRequest("Non si può unire un film con una serie TV");
             return NoContent();
         }
     }

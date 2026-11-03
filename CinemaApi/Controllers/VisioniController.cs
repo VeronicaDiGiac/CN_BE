@@ -37,6 +37,7 @@ namespace CinemaApi.Controllers
             if (dto.DataVisione > DateOnly.FromDateTime(DateTime.Now))
                 return BadRequest("La data di visione non può essere nel futuro");
             if (!await _visioniService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
+            if (await _visioniService.ESerie(dto.IdFilm)) return BadRequest("Per le serie TV si segnano gli episodi visti");
 
             var visione = await _visioniService.CreateVisione(dto, User.IdUtente());
             return CreatedAtAction(nameof(Create), visione);
