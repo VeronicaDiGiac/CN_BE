@@ -10,12 +10,14 @@ namespace CinemaApi.Services
     public class UtentiService
     {
         private readonly CinemaContext _db;
+        private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public UtentiService(CinemaContext db, IWebHostEnvironment webHostEnvironment)
+        public UtentiService(CinemaContext db, IWebHostEnvironment webHostEnvironment, IConfiguration config)
         {
             _db = db;
             _webHostEnvironment = webHostEnvironment;
+            _config = config;
         }
 
         public async Task<bool> UpdateProfilo(int id, UpdateProfiloDto dto)
@@ -120,7 +122,9 @@ namespace CinemaApi.Services
             var nomeFileUnivoco = $"{Guid.NewGuid()}{estensione}";
 
             // Percorso fisico della cartella, es: C:\...\wwwroot\uploads\avatar
-            var cartellaUpload = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "avatar");
+            var cartellaUpload = Path.Combine(PercorsiUpload.Radice(_config, _webHostEnvironment), "avatar");
+            // Alla prima immagine (o in una cartella nuova, es. in produzione) la cartella non c'è ancora
+            Directory.CreateDirectory(cartellaUpload);
             var percorsoCompleto = Path.Combine(cartellaUpload, nomeFileUnivoco);
 
             // Salva il file sul disco fisico

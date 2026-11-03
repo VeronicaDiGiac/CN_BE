@@ -13,10 +13,12 @@ namespace CinemaApi.Services
     {
         private readonly CinemaContext _db;
         private readonly IWebHostEnvironment _webHostEnvironment;
-        public FilmService(CinemaContext db, IWebHostEnvironment webHostEnvironment)
+        private readonly IConfiguration _config;
+        public FilmService(CinemaContext db, IWebHostEnvironment webHostEnvironment, IConfiguration config)
         {
             _db = db;
             _webHostEnvironment = webHostEnvironment;
+            _config = config;
         }
 
         // idUtenteAutenticato è nullable: null se chi chiama non è loggato,
@@ -209,7 +211,9 @@ namespace CinemaApi.Services
             //Questo procede una cosa tipo : a3f29c1e-8b4d-4f2a-9c3e-1d5f7a8b9c0d.jpg
             var nomeFileUnivoco = $"{Guid.NewGuid()}{estensione}";
             //Unisce un percorso valido tipo C:\CinemaApi\CinemaApi\wwwroot\uploads\film.
-            var cartellaUpload = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "film");
+            var cartellaUpload = Path.Combine(PercorsiUpload.Radice(_config, _webHostEnvironment), "film");
+            // Alla prima immagine (o in una cartella nuova, es. in produzione) la cartella non c'è ancora
+            Directory.CreateDirectory(cartellaUpload);
             //Ci aggiunge il nome del file
             var percorsoCompleto = Path.Combine ( cartellaUpload, nomeFileUnivoco );
             //QUesto salva il file sul disco fisico 

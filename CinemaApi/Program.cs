@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using CinemaApi.Controllers;
 using CinemaApi.Helpers;
 using CinemaApi.Models;
@@ -106,6 +107,19 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(15)
             }));
 
+    // Login, registrazione e accesso con Google: 10 tentativi al minuto per IP rendono
+    // inutile provare password a raffica, senza disturbare chi sbaglia una volta
+    // (configurabile con "Limiti:AccessiAlMinuto": i test automatici in locale ne fanno molti di più)
+    var accessiAlMinuto = builder.Configuration.GetValue("Limiti:AccessiAlMinuto", 10);
+    options.AddPolicy(AuthController.LimiteAccesso, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "sconosciuto",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = accessiAlMinuto,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
     // TMDB: 60 richieste al minuto per IP bastano per cercare mentre si scrive
     options.AddPolicy(TmdbController.LimiteTmdb, httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
@@ -154,7 +168,41 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// In produzione l'API sta dietro il proxy di Azure: l'IP del visitatore arriva in X-Forwarded-For.
+// Senza questo i limiti per IP vedrebbero solo l'indirizzo del proxy. ForwardLimit = 1: si usa
+// solo il valore aggiunto dal proxy, non quelli che un client potrebbe inventare.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.ForwardLimit = 1;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
+
+// Origini del FE autorizzate a chiamare l'API (in produzione: l'indirizzo del sito)
+var originiFe = builder.Configuration.GetSection("Cors:Origini").Get<string[]>() ?? Array.Empty<string>();
+
 var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseForwardedHeaders();
+    // Il browser userà sempre HTTPS per questo sito
+    app.UseHsts();
+}
+
+// Header di sicurezza su tutte le risposte: niente "indovinare" il tipo di file,
+// niente inserimento dell'API in un iframe di un altro sito
+app.Use(async (context, next) =>
+{
+    var h = context.Response.Headers;
+    h["X-Content-Type-Options"] = "nosniff";
+    h["X-Frame-Options"] = "DENY";
+    h["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    if (!app.Environment.IsDevelopment())
+        h["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; frame-ancestors 'none'";
+    await next();
+});
 
 // Film salvati prima della colonna TitoloChiave (Database/FilmTitoloChiave.sql): la si calcola
 // una volta sola. Se è già tutto a posto è una sola query, quindi resta sicuro a ogni avvio.
@@ -163,7 +211,8 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<FilmService>().CompletaChiaviTitolo();
 }
 
-app.UseCors(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+// Solo il FE può chiamare l'API dal browser (gli altri siti vengono bloccati dal browser)
+app.UseCors(p => p.WithOrigins(originiFe).AllowAnyHeader().AllowAnyMethod());
 
 // Dopo UseCors: anche le risposte di errore devono avere gli header CORS,
 // altrimenti il browser nasconde al FE lo status 500
@@ -180,6 +229,18 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 
 app.UseStaticFiles();
+
+// Immagini caricate dagli utenti in una cartella fuori da wwwroot (produzione)
+if (PercorsiUpload.Esterna(app.Configuration))
+{
+    var radiceUpload = PercorsiUpload.Radice(app.Configuration, app.Environment);
+    Directory.CreateDirectory(radiceUpload);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(radiceUpload),
+        RequestPath = "/uploads"
+    });
+}
 
 app.UseAuthorization();
 

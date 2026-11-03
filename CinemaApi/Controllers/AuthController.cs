@@ -14,6 +14,9 @@ namespace CinemaApi.Controllers
     public class AuthController : ControllerBase
     {
         // Nome della policy di rate limiting registrata in Program.cs
+        // Policy di rate limiting per login, registrazione e accesso con Google (Program.cs)
+        public const string LimiteAccesso = "accesso";
+
         public const string LimitePasswordDimenticata = "password-dimenticata";
 
         private readonly AuthService _authService;
@@ -27,6 +30,8 @@ namespace CinemaApi.Controllers
 
         // Accesso con Google: il FE manda l'ID token ricevuto da Auth0 e riceve la solita sessione Cineverse
         [HttpPost("esterno")]
+        [EnableRateLimiting(LimiteAccesso)]
+        [ProducesResponseType(429)]
         [ProducesResponseType(typeof(LoginResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -43,6 +48,8 @@ namespace CinemaApi.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting(LimiteAccesso)]
+        [ProducesResponseType(429)]
         [ProducesResponseType(typeof(LoginResponseDto), 200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(500)]
@@ -56,6 +63,8 @@ namespace CinemaApi.Controllers
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting(LimiteAccesso)]
+        [ProducesResponseType(429)]
         [ProducesResponseType(typeof(LoginResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(500)]
