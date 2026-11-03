@@ -1,4 +1,4 @@
-﻿using CinemaApi.Helpers;
+using CinemaApi.Helpers;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -45,6 +45,8 @@ namespace CinemaApi.Models
         public DbSet<PasswordReset> PasswordReset { get; set; }
 
         public DbSet<Visione> Visioni { get; set; }
+
+        public DbSet<EpisodioVisto> EpisodiVisti { get; set; }
 
         public DbSet<DaVedere> DaVedere { get; set; }
 

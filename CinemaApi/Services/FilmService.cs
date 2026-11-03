@@ -44,7 +44,9 @@ namespace CinemaApi.Services
                     NumeroStagioni = f.NumeroStagioni,
                     GiaRecensito = idUtenteAutenticato != null &&
                                     f.Recensioni.Any(r => r.IdUtente == idUtenteAutenticato),
-                    NumeroSpettatori = _db.Visioni.Where(v => v.IdFilm == f.IdFilm).Select(v => v.IdUtente).Distinct().Count(),
+                    NumeroSpettatori = f.Tipo == TipiTitolo.Serie
+                        ? _db.EpisodiVisti.Where(v => v.IdFilm == f.IdFilm).Select(v => v.IdUtente).Distinct().Count()
+                        : _db.Visioni.Where(v => v.IdFilm == f.IdFilm).Select(v => v.IdUtente).Distinct().Count(),
                     InDaVedere = idUtenteAutenticato != null &&
                                  _db.DaVedere.Any(d => d.IdFilm == f.IdFilm && d.IdUtente == idUtenteAutenticato),
                     NumeroVisioni = _db.Visioni.Count(v => v.IdFilm == f.IdFilm && v.IdUtente == idUtenteAutenticato),
@@ -186,6 +188,7 @@ namespace CinemaApi.Services
             await EliminazioneHelper.EliminaRecensioni(_db, idRecensioni);
             await _db.Preferiti.Where(p => p.IdFilm == id).ExecuteDeleteAsync();
             await _db.Visioni.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
+            await _db.EpisodiVisti.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdFilm == id).ExecuteDeleteAsync();
             await _db.ListeFilm.Where(lf => lf.IdFilm == id).ExecuteDeleteAsync();
@@ -262,6 +265,15 @@ namespace CinemaApi.Services
 
             // Visioni: il diario conserva tutte le visioni
             await _db.Visioni.Where(v => v.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(v => v.IdFilm, idDaTenere));
+
+            // Episodi visti delle serie: uno per utente ed episodio
+            var episodiSulTenuto = _db.EpisodiVisti.Where(v => v.IdFilm == idDaTenere);
+            await _db.EpisodiVisti
+                .Where(v => v.IdFilm == idDaEliminare &&
+                            episodiSulTenuto.Any(t => t.IdUtente == v.IdUtente && t.Stagione == v.Stagione && t.Episodio == v.Episodio))
+                .ExecuteDeleteAsync();
+            await _db.EpisodiVisti.Where(v => v.IdFilm == idDaEliminare)
                 .ExecuteUpdateAsync(s => s.SetProperty(v => v.IdFilm, idDaTenere));
 
             // Liste: un film una volta per lista

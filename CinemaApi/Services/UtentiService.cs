@@ -1,4 +1,4 @@
-﻿using CinemaApi.DTOs.RequestDto;
+using CinemaApi.DTOs.RequestDto;
 using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Helpers;
 using CinemaApi.Models;
@@ -82,6 +82,7 @@ namespace CinemaApi.Services
             await _db.Segnalazioni.Where(s => s.IdUtente == id).ExecuteDeleteAsync();
             await _db.PasswordReset.Where(p => p.IdUtente == id).ExecuteDeleteAsync();
             await _db.Visioni.Where(v => v.IdUtente == id).ExecuteDeleteAsync();
+            await _db.EpisodiVisti.Where(v => v.IdUtente == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdUtente == id).ExecuteDeleteAsync();
             await _db.MiPiaceRecensioni.Where(m => m.IdUtente == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdDestinatario == id || n.IdMittente == id).ExecuteDeleteAsync();

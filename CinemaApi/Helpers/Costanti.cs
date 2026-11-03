@@ -30,6 +30,23 @@ namespace CinemaApi.Helpers
             : null;
     }
 
+    // A che punto è un utente con una serie (calcolato, non salvato)
+    public static class StatiSerie
+    {
+        public const string NonIniziata = "NonIniziata";
+        public const string InCorso = "InCorso";
+        // Visti tutti gli episodi usciti, ma la serie continua
+        public const string InPari = "InPari";
+        // Visti tutti gli episodi e la serie è finita
+        public const string Completata = "Completata";
+
+        public static string Calcola(int episodiVisti, int episodiUsciti, bool conclusa) =>
+            episodiVisti == 0 ? NonIniziata
+            : episodiVisti < episodiUsciti ? InCorso
+            : conclusa ? Completata
+            : InPari;
+    }
+
     // Tipi di voce del feed delle attività
     public static class TipiAttivita
     {

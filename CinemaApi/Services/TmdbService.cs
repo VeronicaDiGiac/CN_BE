@@ -285,6 +285,35 @@ namespace CinemaApi.Services
             return risultato;
         }
 
+        // Com'è fatta una serie (stagioni, ultimo episodio uscito, prossimo annunciato):
+        // serve a calcolare l'avanzamento degli utenti. null se la serie non esiste.
+        public async Task<StrutturaSerie?> Struttura(int tmdbId)
+        {
+            var serie = await GetSerie(tmdbId);
+            if (serie == null) return null;
+
+            var ultimo = serie.LastEpisodeToAir;
+            var prossimo = serie.NextEpisodeToAir;
+            return new StrutturaSerie
+            {
+                Stagioni = serie.Seasons
+                    .Where(s => s.SeasonNumber > 0)
+                    .OrderBy(s => s.SeasonNumber)
+                    .Select(s => new StagioneStruttura(s.SeasonNumber, s.EpisodeCount))
+                    .ToList(),
+                // Se l'ultimo uscito è uno speciale non dice niente sulle stagioni normali
+                UltimoUscito = ultimo != null && ultimo.SeasonNumber > 0 ? (ultimo.SeasonNumber, ultimo.EpisodeNumber) : null,
+                InUscita = prossimo == null ? null : new EpisodioRiferimentoDto
+                {
+                    Stagione = prossimo.SeasonNumber,
+                    Episodio = prossimo.EpisodeNumber,
+                    Titolo = string.IsNullOrWhiteSpace(prossimo.Name) ? null : prossimo.Name,
+                    DataUscita = string.IsNullOrEmpty(prossimo.AirDate) ? null : prossimo.AirDate
+                },
+                Conclusa = serie.Status is "Ended" or "Canceled"
+            };
+        }
+
         // Risposta completa di TMDB per una serie, in cache: la usano dettaglio e stagioni
         private async Task<RispostaSerie?> GetSerie(int tmdbId)
         {
@@ -361,6 +390,10 @@ namespace CinemaApi.Services
             public List<int> EpisodeRunTime { get; set; } = new();
             public int NumberOfSeasons { get; set; }
             public List<StagioneTmdb> Seasons { get; set; } = new();
+            // "Returning Series", "Ended", "Canceled"…
+            public string? Status { get; set; }
+            public EpisodioTmdb? LastEpisodeToAir { get; set; }
+            public EpisodioTmdb? NextEpisodeToAir { get; set; }
         }
 
         private class StagioneTmdb
@@ -382,6 +415,7 @@ namespace CinemaApi.Services
 
         private class EpisodioTmdb
         {
+            public int SeasonNumber { get; set; }
             public int EpisodeNumber { get; set; }
             public string? Name { get; set; }
             public string? AirDate { get; set; }
@@ -453,6 +487,30 @@ namespace CinemaApi.Services
             public string? Job { get; set; }
             public int Order { get; set; }
         }
+    }
+
+    public record StagioneStruttura(int Numero, int Episodi);
+
+    // Struttura di una serie secondo TMDB (vedi TmdbService.Struttura)
+    public class StrutturaSerie
+    {
+        // Stagioni normali in ordine (gli speciali, stagione 0, esclusi)
+        public List<StagioneStruttura> Stagioni { get; set; } = new();
+        // Ultimo episodio uscito; null se non è uscito ancora niente
+        public (int Stagione, int Episodio)? UltimoUscito { get; set; }
+        public EpisodioRiferimentoDto? InUscita { get; set; }
+        // Finita o cancellata: non usciranno altri episodi
+        public bool Conclusa { get; set; }
+
+        // Gli episodi escono in ordine: è uscito tutto quello che viene prima dell'ultimo uscito
+        public bool Uscito(int stagione, int episodio) =>
+            stagione > 0 && UltimoUscito is { } u && (stagione < u.Stagione || (stagione == u.Stagione && episodio <= u.Episodio));
+
+        public IEnumerable<(int Stagione, int Episodio)> EpisodiUscitiInOrdine() =>
+            Stagioni.SelectMany(s => Enumerable.Range(1, Math.Max(s.Episodi, 0)).Select(e => (s.Numero, e)))
+                .Where(x => Uscito(x.Item1, x.Item2));
+
+        public int EpisodiUsciti => EpisodiUscitiInOrdine().Count();
     }
 
     // Dati di un film o di una serie TMDB già convertiti nei campi del nostro catalogo
