@@ -34,6 +34,10 @@ namespace CinemaApi.Helpers
                 .Where(n => n.IdCommento != null && tutti.Contains(n.IdCommento.Value))
                 .ExecuteDeleteAsync();
 
+            await db.MiPiaceCommenti
+                .Where(m => tutti.Contains(m.IdCommento))
+                .ExecuteDeleteAsync();
+
             // Prima stacco le risposte dal padre, altrimenti la FK Commenti -> Commenti
             // blocca l'eliminazione in base all'ordine delle righe.
             await db.Commenti
@@ -45,11 +49,37 @@ namespace CinemaApi.Helpers
                 .ExecuteDeleteAsync();
         }
 
+        // Elimina le discussioni indicate con tutti i loro messaggi, "mi piace", notifiche e segnalazioni.
+        public static async Task EliminaDiscussioni(CinemaContext db, List<int> idDiscussioni)
+        {
+            var idCommenti = await db.Commenti
+                .Where(c => c.IdDiscussione != null && idDiscussioni.Contains(c.IdDiscussione.Value))
+                .Select(c => c.IdCommento)
+                .ToListAsync();
+            await EliminaCommenti(db, idCommenti);
+
+            await db.Segnalazioni
+                .Where(s => s.TipoContenuto == TipiContenuto.Discussione && idDiscussioni.Contains(s.IdContenuto))
+                .ExecuteDeleteAsync();
+
+            await db.MiPiaceDiscussioni
+                .Where(m => idDiscussioni.Contains(m.IdDiscussione))
+                .ExecuteDeleteAsync();
+
+            await db.Notifiche
+                .Where(n => n.IdDiscussione != null && idDiscussioni.Contains(n.IdDiscussione.Value))
+                .ExecuteDeleteAsync();
+
+            await db.Discussioni
+                .Where(d => idDiscussioni.Contains(d.IdDiscussione))
+                .ExecuteDeleteAsync();
+        }
+
         // Elimina le recensioni indicate con tutti i loro commenti e le segnalazioni collegate.
         public static async Task EliminaRecensioni(CinemaContext db, List<int> idRecensioni)
         {
             var idCommenti = await db.Commenti
-                .Where(c => idRecensioni.Contains(c.IdRecensione))
+                .Where(c => c.IdRecensione != null && idRecensioni.Contains(c.IdRecensione.Value))
                 .Select(c => c.IdCommento)
                 .ToListAsync();
             await EliminaCommenti(db, idCommenti);

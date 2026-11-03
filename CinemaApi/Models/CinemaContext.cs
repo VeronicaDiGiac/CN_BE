@@ -48,6 +48,10 @@ namespace CinemaApi.Models
 
         public DbSet<EpisodioVisto> EpisodiVisti { get; set; }
 
+        public DbSet<Discussione> Discussioni { get; set; }
+        public DbSet<MiPiaceDiscussione> MiPiaceDiscussioni { get; set; }
+        public DbSet<MiPiaceCommento> MiPiaceCommenti { get; set; }
+
         public DbSet<DaVedere> DaVedere { get; set; }
 
         public DbSet<MiPiaceRecensione> MiPiaceRecensioni { get; set; }
@@ -66,6 +70,12 @@ namespace CinemaApi.Models
 
             modelBuilder.Entity<ListaFilm>()
                 .HasKey(lf => new { lf.IdLista, lf.IdFilm });
+
+            modelBuilder.Entity<MiPiaceDiscussione>()
+                .HasKey(m => new { m.IdUtente, m.IdDiscussione });
+
+            modelBuilder.Entity<MiPiaceCommento>()
+                .HasKey(m => new { m.IdUtente, m.IdCommento });
 
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)

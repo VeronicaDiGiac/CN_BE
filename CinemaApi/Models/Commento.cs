@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CinemaApi.Models
@@ -8,7 +8,9 @@ namespace CinemaApi.Models
         [Key]
         public int IdCommento { get; set; }
         public int IdUtente { get; set; }
-        public int IdRecensione { get; set; }
+        // Un commento sta sotto una recensione OPPURE in una discussione (CK_Commenti_Contenitore)
+        public int? IdRecensione { get; set; }
+        public int? IdDiscussione { get; set; }
         public string? Contenuto { get; set; }
         public DateTime? DataCommento { get; set; }
         public bool Spoiler { get; set; }
@@ -18,6 +20,11 @@ namespace CinemaApi.Models
 
         [ForeignKey("IdRecensione")]
         public Recensione? Recensione { get; set; }
+
+        [ForeignKey("IdDiscussione")]
+        public Discussione? Discussione { get; set; }
+
+        public ICollection<MiPiaceCommento>? MiPiace { get; set; }
 
         public int? IdCommentoPadre { get; set; }
 

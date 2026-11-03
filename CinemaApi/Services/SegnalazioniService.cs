@@ -31,15 +31,26 @@ namespace CinemaApi.Services
                     DataGestione = s.DataGestione,
                     IdAdminGestore = s.IdAdminGestore,
 
+                    IdDiscussione = s.TipoContenuto == TipiContenuto.Discussione
+                        ? s.IdContenuto
+                        : s.TipoContenuto == TipiContenuto.Commento
+                        ? _db.Commenti.Where(c => c.IdCommento == s.IdContenuto).Select(c => c.IdDiscussione).FirstOrDefault()
+                        : null,
+
                     // idFilm ricavato a seconda del tipo di contenuto segnalato
                     IdFilm = s.TipoContenuto == TipiContenuto.Recensione
                         ? _db.Recensioni
                             .Where(r => r.IdRecensione == s.IdContenuto)
                             .Select(r => (int?)r.IdFilm)
                             .FirstOrDefault()
+                        : s.TipoContenuto == TipiContenuto.Discussione
+                        ? _db.Discussioni
+                            .Where(d => d.IdDiscussione == s.IdContenuto)
+                            .Select(d => (int?)d.IdFilm)
+                            .FirstOrDefault()
                         : _db.Commenti
                             .Where(c => c.IdCommento == s.IdContenuto)
-                            .Select(c => (int?)c.Recensione.IdFilm)
+                            .Select(c => c.Recensione != null ? (int?)c.Recensione.IdFilm : (int?)c.Discussione!.IdFilm)
                             .FirstOrDefault()
                 })
                 .ToListAsync();
@@ -50,6 +61,8 @@ namespace CinemaApi.Services
         {
             if (tipoContenuto == TipiContenuto.Recensione)
                 return await _db.Recensioni.AnyAsync(r => r.IdRecensione == idContenuto);
+            if (tipoContenuto == TipiContenuto.Discussione)
+                return await _db.Discussioni.AnyAsync(d => d.IdDiscussione == idContenuto);
             return await _db.Commenti.AnyAsync(c => c.IdCommento == idContenuto);
         }
 

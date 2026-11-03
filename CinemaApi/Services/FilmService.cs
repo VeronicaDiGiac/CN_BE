@@ -186,6 +186,8 @@ namespace CinemaApi.Services
                 .Select(r => r.IdRecensione)
                 .ToListAsync();
             await EliminazioneHelper.EliminaRecensioni(_db, idRecensioni);
+            var idDiscussioni = await _db.Discussioni.Where(d => d.IdFilm == id).Select(d => d.IdDiscussione).ToListAsync();
+            await EliminazioneHelper.EliminaDiscussioni(_db, idDiscussioni);
             await _db.Preferiti.Where(p => p.IdFilm == id).ExecuteDeleteAsync();
             await _db.Visioni.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.EpisodiVisti.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
@@ -275,6 +277,10 @@ namespace CinemaApi.Services
                 .ExecuteDeleteAsync();
             await _db.EpisodiVisti.Where(v => v.IdFilm == idDaEliminare)
                 .ExecuteUpdateAsync(s => s.SetProperty(v => v.IdFilm, idDaTenere));
+
+            // Discussioni: passano tutte alla scheda tenuta
+            await _db.Discussioni.Where(d => d.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.IdFilm, idDaTenere));
 
             // Liste: un film una volta per lista
             var listeConTenuto = _db.ListeFilm.Where(lf => lf.IdFilm == idDaTenere).Select(lf => lf.IdLista);

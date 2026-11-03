@@ -16,6 +16,7 @@ namespace CinemaApi.Models
         public int? IdFilm { get; set; }
         public int? IdRecensione { get; set; }
         public int? IdCommento { get; set; }
+        public int? IdDiscussione { get; set; }
         // Solo per NuovoEpisodio
         public int? Stagione { get; set; }
         public int? Episodio { get; set; }

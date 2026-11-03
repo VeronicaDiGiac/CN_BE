@@ -1,11 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CinemaApi.DTOs.RequestDto
 {
     public class CreateCommentoDto
     {
-        [Required]
-        public int IdRecensione { get; set; }
+        // Esattamente uno dei due: sotto una recensione oppure in una discussione
+        public int? IdRecensione { get; set; }
+        public int? IdDiscussione { get; set; }
 
         [Required]
         [MaxLength(500)]

@@ -71,6 +71,13 @@ namespace CinemaApi.Services
                 .ToListAsync();
             await EliminazioneHelper.EliminaRecensioni(_db, idRecensioni);
 
+            // Le sue discussioni (con i messaggi degli altri dentro)
+            var idDiscussioni = await _db.Discussioni
+                .Where(d => d.IdUtente == id)
+                .Select(d => d.IdDiscussione)
+                .ToListAsync();
+            await EliminazioneHelper.EliminaDiscussioni(_db, idDiscussioni);
+
             var idCommenti = await _db.Commenti
                 .Where(c => c.IdUtente == id)
                 .Select(c => c.IdCommento)
@@ -85,6 +92,8 @@ namespace CinemaApi.Services
             await _db.EpisodiVisti.Where(v => v.IdUtente == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdUtente == id).ExecuteDeleteAsync();
             await _db.MiPiaceRecensioni.Where(m => m.IdUtente == id).ExecuteDeleteAsync();
+            await _db.MiPiaceCommenti.Where(m => m.IdUtente == id).ExecuteDeleteAsync();
+            await _db.MiPiaceDiscussioni.Where(m => m.IdUtente == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdDestinatario == id || n.IdMittente == id).ExecuteDeleteAsync();
             await _db.ListeFilm.Where(lf => lf.Lista!.IdUtente == id).ExecuteDeleteAsync();
             await _db.Liste.Where(l => l.IdUtente == id).ExecuteDeleteAsync();

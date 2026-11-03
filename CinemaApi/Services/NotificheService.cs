@@ -15,7 +15,7 @@ namespace CinemaApi.Services
 
         // Non si notifica a se stessi (es. rispondere a un commento sotto la propria recensione)
         public async Task Notifica(int idDestinatario, int idMittente, string tipo,
-            int? idFilm = null, int? idRecensione = null, int? idCommento = null)
+            int? idFilm = null, int? idRecensione = null, int? idCommento = null, int? idDiscussione = null)
         {
             if (idDestinatario == idMittente) return;
 
@@ -27,6 +27,7 @@ namespace CinemaApi.Services
                 IdFilm = idFilm,
                 IdRecensione = idRecensione,
                 IdCommento = idCommento,
+                IdDiscussione = idDiscussione,
                 DataCreazione = DateTime.Now
             });
             await _db.SaveChangesAsync();
@@ -34,10 +35,14 @@ namespace CinemaApi.Services
 
         // Toglie una notifica non ancora letta quando l'azione viene annullata
         // (es. "mi piace" tolto subito dopo): evita notifiche di cose che non esistono più
-        public Task Annulla(int idDestinatario, int idMittente, string tipo, int? idRecensione = null) =>
+        // Si confrontano solo i riferimenti indicati (recensione, commento o discussione)
+        public Task Annulla(int idDestinatario, int idMittente, string tipo,
+            int? idRecensione = null, int? idCommento = null, int? idDiscussione = null) =>
             _db.Notifiche
-                .Where(n => n.IdDestinatario == idDestinatario && n.IdMittente == idMittente && n.Tipo == tipo
-                            && n.IdRecensione == idRecensione && !n.Letta)
+                .Where(n => n.IdDestinatario == idDestinatario && n.IdMittente == idMittente && n.Tipo == tipo && !n.Letta)
+                .Where(n => idRecensione == null || n.IdRecensione == idRecensione)
+                .Where(n => idCommento == null || n.IdCommento == idCommento)
+                .Where(n => idDiscussione == null || n.IdDiscussione == idDiscussione)
                 .ExecuteDeleteAsync();
 
         public async Task<PagedResultDto<NotificaDto>> GetNotifiche(int idUtente, int pageNumber, int pageSize)
@@ -62,6 +67,7 @@ namespace CinemaApi.Services
                     TitoloFilm = _db.Film.Where(f => f.IdFilm == n.IdFilm).Select(f => f.Titolo).FirstOrDefault(),
                     IdRecensione = n.IdRecensione,
                     IdCommento = n.IdCommento,
+                    IdDiscussione = n.IdDiscussione,
                     Stagione = n.Stagione,
                     Episodio = n.Episodio
                 })

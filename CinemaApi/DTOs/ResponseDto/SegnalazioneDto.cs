@@ -1,4 +1,4 @@
-﻿namespace CinemaApi.DTOs.ResponseDto
+namespace CinemaApi.DTOs.ResponseDto
 {
     // DTO di risposta mostrato all'Admin quando visualizza le segnalazioni.
     // Include lo UserName di chi ha segnalato, per contesto.
@@ -17,6 +17,9 @@
         public int? IdAdminGestore { get; set; }
 
         public int? IdFilm { get; set; }
+
+        // La discussione da aprire (per una discussione o per un suo messaggio), altrimenti null
+        public int? IdDiscussione { get; set; }
 
     }
 }

@@ -63,6 +63,10 @@ namespace CinemaApi.Helpers
         public const string RispostaCommento = "RispostaCommento";
         // Di sistema (senza mittente): è uscito un episodio di una serie che si sta guardando
         public const string NuovoEpisodio = "NuovoEpisodio";
+        public const string MiPiaceCommento = "MiPiaceCommento";
+        public const string MiPiaceDiscussione = "MiPiaceDiscussione";
+        // Qualcuno ha scritto nella tua discussione
+        public const string CommentoDiscussione = "CommentoDiscussione";
     }
 
     // Elenchi presi da TMDB per il catalogo (valori usati nell'URL: /api/tmdb/elenco/{categoria})
@@ -93,5 +97,13 @@ namespace CinemaApi.Helpers
     {
         public const string Recensione = "Recensione";
         public const string Commento = "Commento";
+        public const string Discussione = "Discussione";
+    }
+
+    // Ordinamenti delle discussioni (GET /api/discussioni/film/{id}?ordinamento=)
+    public static class OrdinamentiDiscussioni
+    {
+        public const string Recenti = "recenti";
+        public const string Apprezzate = "apprezzate";
     }
 }

@@ -74,6 +74,7 @@ builder.Services.AddScoped<ListeService>();
 builder.Services.AddScoped<StatisticheService>();
 builder.Services.AddScoped<EpisodiService>();
 builder.Services.AddScoped<CalendarioSerieService>();
+builder.Services.AddScoped<DiscussioniService>();
 // Accesso con Google: verifica dei token di Auth0 (singleton per tenere in cache le chiavi pubbliche)
 builder.Services.AddSingleton<VerificaAuth0>();
 // Controllo periodico dei nuovi episodi delle serie seguite (notifiche)

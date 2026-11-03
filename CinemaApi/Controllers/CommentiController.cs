@@ -8,6 +8,7 @@ using System.Security.Claims;
 
 namespace CinemaApi.Controllers
 {
+    // Commenti delle recensioni e messaggi delle discussioni
     [ApiController]
     [Route("api/[controller]")]
     public class CommentiController : ControllerBase
@@ -18,9 +19,9 @@ namespace CinemaApi.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(List<CommentoDto>), 200)]
         [ProducesResponseType(500)]
-        public async Task<IActionResult> Get(int? idRecensione, int? idUtente)
+        public async Task<IActionResult> Get(int? idRecensione, int? idUtente, int? idDiscussione)
         {
-            var commenti = await _commentiService.GetCommenti(idRecensione, idUtente);
+            var commenti = await _commentiService.GetCommenti(idRecensione, idUtente, idDiscussione, User.IdUtenteOpzionale());
             return Ok(commenti);
         }
 
@@ -33,9 +34,13 @@ namespace CinemaApi.Controllers
         public async Task<IActionResult> Create([FromBody] CreateCommentoDto dto)
         {
             var idUtenteAutenticato = User.IdUtente();
-            if (!await _commentiService.RecensioneEsiste(dto.IdRecensione)) return NotFound("Recensione non trovata");
-            if (dto.IdCommentoPadre != null && !await _commentiService.CommentoPadreValido(dto.IdCommentoPadre.Value, dto.IdRecensione))
-                return BadRequest("Il commento a cui rispondi non esiste o appartiene a un'altra recensione");
+            // Sotto una recensione oppure in una discussione: esattamente uno dei due
+            if ((dto.IdRecensione == null) == (dto.IdDiscussione == null))
+                return BadRequest("Indica la recensione oppure la discussione");
+            if (dto.IdRecensione != null && !await _commentiService.RecensioneEsiste(dto.IdRecensione.Value)) return NotFound("Recensione non trovata");
+            if (dto.IdDiscussione != null && !await _commentiService.DiscussioneEsiste(dto.IdDiscussione.Value)) return NotFound("Discussione non trovata");
+            if (dto.IdCommentoPadre != null && !await _commentiService.CommentoPadreValido(dto.IdCommentoPadre.Value, dto.IdRecensione, dto.IdDiscussione))
+                return BadRequest("Il commento a cui rispondi non esiste o sta altrove");
             var commento = await _commentiService.CreateCommento(dto, idUtenteAutenticato);
             return CreatedAtAction(nameof(Create), commento);
         }
@@ -70,6 +75,33 @@ namespace CinemaApi.Controllers
             if (!AutorizzazioneHelper.PuoModificare(commenti.IdUtente, idUtenteAutenticato, ruolo)) return Forbid();
             var eliminato = await _commentiService.DeleteCommento(id);
             if (!eliminato) return NotFound();
+            return NoContent();
+        }
+
+        // PUT perché è idempotente: ripeterlo non aggiunge un secondo "mi piace"
+        [HttpPut("{id}/mipiace")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> MettiMiPiace(int id)
+        {
+            var commento = await _commentiService.GetCommentoById(id);
+            if (commento == null) return NotFound();
+            if (commento.IdUtente == User.IdUtente()) return BadRequest("Non puoi mettere \"mi piace\" al tuo commento");
+            await _commentiService.MettiMiPiace(commento, User.IdUtente());
+            return NoContent();
+        }
+
+        [HttpDelete("{id}/mipiace")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> TogliMiPiace(int id)
+        {
+            var commento = await _commentiService.GetCommentoById(id);
+            if (commento == null) return NotFound();
+            await _commentiService.TogliMiPiace(commento, User.IdUtente());
             return NoContent();
         }
     }
