@@ -68,6 +68,14 @@ namespace CinemaApi.Services
 
         public async Task<CommentoDto> CreateCommento(CreateCommentoDto dto, int idUtente)
         {
+            // Le conversazioni hanno due livelli (commento e risposte), come li mostra il FE:
+            // chi risponde a una risposta finisce nello stesso filone, sotto il commento principale.
+            // La notifica va comunque a chi ha scritto la risposta a cui si è risposto.
+            int? idPadre = dto.IdCommentoPadre;
+            if (idPadre != null)
+                idPadre = await _db.Commenti.Where(c => c.IdCommento == idPadre)
+                    .Select(c => c.IdCommentoPadre ?? c.IdCommento).FirstOrDefaultAsync();
+
             var commento = new Commento
             {
                 IdUtente = idUtente,
@@ -75,7 +83,7 @@ namespace CinemaApi.Services
                 IdDiscussione = dto.IdDiscussione,
                 Contenuto = dto.Contenuto,
                 DataCommento = DateTime.Now,
-                IdCommentoPadre = dto.IdCommentoPadre,
+                IdCommentoPadre = idPadre,
                 Spoiler = dto.Spoiler
             };
             _db.Commenti.Add(commento);
@@ -88,7 +96,7 @@ namespace CinemaApi.Services
                     .Where(d => d.IdDiscussione == commento.IdDiscussione)
                     .ExecuteUpdateAsync(s => s.SetProperty(d => d.DataUltimaAttivita, commento.DataCommento!.Value));
             }
-            await NotificaCommento(commento);
+            await NotificaCommento(commento, dto.IdCommentoPadre);
 
             return new CommentoDto
             {
@@ -123,17 +131,18 @@ namespace CinemaApi.Services
 
         // Avvisa l'autore della recensione (o della discussione) e, per le risposte, l'autore del
         // commento a cui si risponde. Se sono la stessa persona riceve una sola notifica (la risposta).
-        private async Task NotificaCommento(Commento commento)
+        // idRispostaA: il commento a cui l'utente ha risposto (può essere una risposta dentro il filone)
+        private async Task NotificaCommento(Commento commento, int? idRispostaA)
         {
             var contenitore = await Contenitore(commento);
             if (contenitore == null) return;
             var (idAutore, idFilm) = contenitore.Value;
 
             int? autorePadre = null;
-            if (commento.IdCommentoPadre != null)
+            if (idRispostaA != null)
             {
                 autorePadre = await _db.Commenti
-                    .Where(c => c.IdCommento == commento.IdCommentoPadre)
+                    .Where(c => c.IdCommento == idRispostaA)
                     .Select(c => (int?)c.IdUtente)
                     .FirstOrDefaultAsync();
                 if (autorePadre != null)
