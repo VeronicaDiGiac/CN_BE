@@ -19,6 +19,51 @@ namespace CinemaApi.Services
             _notifiche = notifiche;
         }
 
+        // Tutti i commenti scritti dall'utente, dal più recente, con il posto in cui stanno.
+        // dove: "recensioni" o "discussioni" (null = tutti); q cerca nel testo, nel film o nella discussione.
+        public async Task<PagedResultDto<MioCommentoDto>> GetMieiCommenti(int idUtente, string? dove, string? q, int pageNumber, int pageSize)
+        {
+            var query = _db.Commenti.Where(c => c.IdUtente == idUtente);
+            if (dove == DoveCommenti.Recensioni) query = query.Where(c => c.IdRecensione != null);
+            if (dove == DoveCommenti.Discussioni) query = query.Where(c => c.IdDiscussione != null);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var t = q.Trim();
+                query = query.Where(c => (c.Contenuto != null && c.Contenuto.Contains(t))
+                    || (c.Recensione != null && c.Recensione.Film!.Titolo!.Contains(t))
+                    || (c.Discussione != null && (c.Discussione.Titolo.Contains(t) || c.Discussione.Film!.Titolo!.Contains(t))));
+            }
+
+            var totale = await query.CountAsync();
+            var voci = await query
+                .OrderByDescending(c => c.DataCommento).ThenByDescending(c => c.IdCommento)
+                .Skip((pageNumber - 1) * pageSize).Take(pageSize)
+                .Select(c => new MioCommentoDto
+                {
+                    IdCommento = c.IdCommento,
+                    Contenuto = c.Contenuto,
+                    Spoiler = c.Spoiler,
+                    DataCommento = c.DataCommento,
+                    IdFilm = c.Recensione != null ? c.Recensione.IdFilm : c.Discussione != null ? c.Discussione.IdFilm : null,
+                    TitoloFilm = c.Recensione != null ? c.Recensione.Film!.Titolo : c.Discussione != null ? c.Discussione.Film!.Titolo : null,
+                    ImmagineFilm = c.Recensione != null ? c.Recensione.Film!.ImmagineUrl : c.Discussione != null ? c.Discussione.Film!.ImmagineUrl : null,
+                    TipoFilm = c.Recensione != null ? c.Recensione.Film!.Tipo : c.Discussione != null ? c.Discussione.Film!.Tipo : null,
+                    IdRecensione = c.IdRecensione,
+                    AutoreRecensione = c.Recensione != null ? c.Recensione.Utente!.UserName : null,
+                    IdDiscussione = c.IdDiscussione,
+                    TitoloDiscussione = c.Discussione != null ? c.Discussione.Titolo : null,
+                    Stagione = c.Discussione != null ? c.Discussione.Stagione : null,
+                    Episodio = c.Discussione != null ? c.Discussione.Episodio : null,
+                    IdCommentoPadre = c.IdCommentoPadre,
+                    InRispostaA = c.CommentoPadre != null ? c.CommentoPadre.Utente!.UserName : null,
+                    NumeroMiPiace = c.MiPiace!.Count(),
+                    NumeroRisposte = _db.Commenti.Count(r => r.IdCommentoPadre == c.IdCommento && r.IdUtente != idUtente)
+                })
+                .ToListAsync();
+
+            return new PagedResultDto<MioCommentoDto> { TotalCount = totale, PageNumber = pageNumber, PageSize = pageSize, Items = voci };
+        }
+
         public async Task<Commento?> GetCommentoById(int id)
         {
             return await _db.Commenti.FindAsync(id);

@@ -93,6 +93,13 @@ namespace CinemaApi.Helpers
         public const string Titolo = "titolo";
     }
 
+    // Filtro di "I miei commenti" (GET /api/commenti/miei?dove=)
+    public static class DoveCommenti
+    {
+        public const string Recensioni = "recensioni";
+        public const string Discussioni = "discussioni";
+    }
+
     // Tipi di voce dell'attività recente nel pannello dell'admin
     public static class TipiAttivitaAdmin
     {

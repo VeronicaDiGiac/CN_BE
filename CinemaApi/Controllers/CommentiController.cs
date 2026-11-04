@@ -25,6 +25,20 @@ namespace CinemaApi.Controllers
             return Ok(commenti);
         }
 
+        // "I miei commenti": quelli dell'utente autenticato, dal più recente.
+        // dove: recensioni o discussioni (vuoto = tutti); q: cerca nel testo, nel film o nella discussione
+        [HttpGet("miei")]
+        [Authorize]
+        [ProducesResponseType(typeof(PagedResultDto<MioCommentoDto>), 200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> GetMiei(string? dove, string? q, int pageNumber = 1, int pageSize = 20)
+        {
+            if (pageNumber < 1 || pageSize is < 1 or > 50) return BadRequest("Pagina non valida (pageSize da 1 a 50)");
+            if (dove != null && dove is not (DoveCommenti.Recensioni or DoveCommenti.Discussioni))
+                return BadRequest("dove: usa recensioni o discussioni");
+            return Ok(await _commentiService.GetMieiCommenti(User.IdUtente(), dove, q, pageNumber, pageSize));
+        }
+
         [HttpPost]
         [Authorize]
         [ProducesResponseType(typeof(CommentoDto), 201)]
