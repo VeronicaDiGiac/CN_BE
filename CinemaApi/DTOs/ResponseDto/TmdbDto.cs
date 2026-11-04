@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CinemaApi.DTOs.ResponseDto
 {
     // Un risultato della ricerca su TMDB
@@ -17,6 +19,10 @@ namespace CinemaApi.DTOs.ResponseDto
 
         // Valorizzato se il film è già nel catalogo: il FE apre direttamente la scheda
         public int? IdFilm { get; set; }
+
+        // Solo per ordinare i risultati nel BE
+        [JsonIgnore]
+        public double Popolarita { get; set; }
     }
 
     // Trailer e "dove guardarlo" in Italia. Tutto vuoto se il film non è collegato a TMDB.
@@ -48,6 +54,26 @@ namespace CinemaApi.DTOs.ResponseDto
         public string Ruolo { get; set; } = "";
         public string? FotoUrl { get; set; }
         public List<TmdbRisultatoDto> Titoli { get; set; } = new();
+    }
+
+    // Risultati dei filtri del catalogo su TMDB (regista, attore, anno, genere)
+    public class TmdbScopertaDto
+    {
+        public int Pagina { get; set; }
+        public int TotalePagine { get; set; }
+        public int TotaleRisultati { get; set; }
+        public List<TmdbRisultatoDto> Risultati { get; set; } = new();
+        // Nomi delle persone trovate su TMDB per i filtri (es. "martin scorsese" → "Martin Scorsese")
+        public string? Regista { get; set; }
+        public string? Attore { get; set; }
+        // Nessuna persona su TMDB con il nome scritto nel filtro
+        public bool PersonaNonTrovata { get; set; }
+    }
+
+    // Un genere che si può scegliere nei filtri
+    public class GenereDto
+    {
+        public string Nome { get; set; } = "";
     }
 
     public class TmdbRicercaDto

@@ -120,13 +120,16 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1)
             }));
 
-    // TMDB: 60 richieste al minuto per IP bastano per cercare mentre si scrive
+    // TMDB: una visita al catalogo fa già circa 10 richieste (sezioni, ricerca, persone, filtri), quindi
+    // 150 al minuto per IP lasciano navigare senza blocchi. Le risposte sono comunque in cache nel BE.
+    // Configurabile con "Limiti:TmdbAlMinuto" (i test end-to-end in locale ne fanno di più)
+    var tmdbAlMinuto = builder.Configuration.GetValue("Limiti:TmdbAlMinuto", 150);
     options.AddPolicy(TmdbController.LimiteTmdb, httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "sconosciuto",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 60,
+                PermitLimit = tmdbAlMinuto,
                 Window = TimeSpan.FromMinutes(1)
             }));
 });

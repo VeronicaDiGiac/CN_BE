@@ -95,10 +95,12 @@ namespace CinemaApi.Services
         public async Task<PagedResultDto<FilmDto>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize, string? ordinamento = null, string? tipo = null, string? testo = null)
         {
             //Da Ricordare : la query costruita non è ancora eseguita, la uso due volte, una volta per contare il totale una volta per prendere la pagina specifica, se eseguissi ToListAsync non si potrebbe contare niente.
+            // Le serie importate da TMDB hanno nomi di genere diversi (es. "Action & Adventure" per "Azione")
+            var genereSerie = GeneriTmdb.Trova(genere)?.NomeSerie;
             var query = _db.Film
                 .Where(f => titolo == null || f.Titolo.Contains(titolo))
                 .Where(f => regista == null || f.Regista.Contains(regista))
-                .Where(f => genere == null || f.Genere.Contains(genere))
+                .Where(f => genere == null || f.Genere.Contains(genere) || (genereSerie != null && f.Genere.Contains(genereSerie)))
                 .Where(f => annoUscita == null || f.AnnoUscita == annoUscita)
                 .Where(f => attori == null || f.Attori.Contains(attori))
                 .Where(f => tipo == null || f.Tipo == tipo)

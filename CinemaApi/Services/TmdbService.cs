@@ -44,43 +44,25 @@ namespace CinemaApi.Services
             return ElencoTmdb(url, $"tmdb:cerca:{tipo}:{testo.ToLowerInvariant()}:{pagina}:{anno}", TimeSpan.FromMinutes(10), tipo);
         }
 
-        // Persone che corrispondono al testo (al massimo 2, le più rilevanti) con i loro titoli più noti:
-        // per un attore i film/serie in cui recita, per un regista quelli che ha diretto.
-        // tipo: solo film o solo serie; null = entrambi
+        // Persone (attori e registi) che la barra di ricerca deve mostrare, con i loro titoli più noti.
+        // Si usa la ricerca "multi" di TMDB, che ordina film, serie e persone insieme per rilevanza:
+        // una persona compare solo se è tra i primi risultati. Così "barbie" mostra il film Barbie e non
+        // l'attrice Barbie Ferreira, mentre "scorsese" o "leonardo di caprio" mostrano la persona.
+        // Per un attore i titoli in cui recita, per un regista quelli che ha diretto. tipo: solo film o solo serie.
         public async Task<List<PersonaTmdbDto>> CercaPersone(string testo, string? tipo = null)
         {
             var chiave = $"tmdb:persone:{testo.ToLowerInvariant()}:{tipo}";
             if (_cache.TryGetValue(chiave, out List<PersonaTmdbDto>? inCache) && inCache != null) return CopiaPersone(inCache);
 
-            var ricerca = await Get<RispostaPersone>(
-                $"search/person?query={Uri.EscapeDataString(testo)}&language={Lingua}&include_adult=false") ?? new RispostaPersone();
+            var multi = await Get<RispostaMulti>(
+                $"search/multi?query={Uri.EscapeDataString(testo)}&language={Lingua}&include_adult=false") ?? new RispostaMulti();
             var persone = new List<PersonaTmdbDto>();
-            // Solo chi recita o dirige: sceneggiatori, produttori… porterebbero risultati poco utili
-            foreach (var p in ricerca.Results.Where(p => p.KnownForDepartment is "Acting" or "Directing").Take(2))
+            foreach (var p in multi.Results.Take(PosizioniPersona)
+                         .Where(r => r.MediaType == "person" && r.KnownForDepartment is "Acting" or "Directing")
+                         .Take(2))
             {
-                var crediti = await Get<CreditiPersona>($"person/{p.Id}/combined_credits?language={Lingua}");
-                if (crediti == null) continue;
                 var regista = p.KnownForDepartment == "Directing";
-                var lavori = regista ? crediti.Crew.Where(c => c.Job == "Director") : crediti.Cast;
-                var titoli = lavori
-                    .Where(c => c.MediaType is "movie" or "tv")
-                    .Where(c => tipo == null || (c.MediaType == "tv") == (tipo == TipiTitolo.Serie))
-                    // Talk show e notiziari: chi recita ci compare come ospite, non sono "suoi" titoli
-                    .Where(c => !c.GenreIds.Contains(GenereTalk) && !c.GenreIds.Contains(GenereNotizie))
-                    .GroupBy(c => (c.MediaType, c.Id)).Select(g => g.First())
-                    .OrderByDescending(c => c.Popularity)
-                    .Take(20)
-                    .Select(c => new TmdbRisultatoDto
-                    {
-                        TmdbId = c.Id,
-                        Tipo = c.MediaType == "tv" ? TipiTitolo.Serie : TipiTitolo.Film,
-                        Titolo = c.Title ?? c.Name ?? c.OriginalTitle ?? c.OriginalName ?? "",
-                        TitoloOriginale = c.OriginalTitle ?? c.OriginalName,
-                        AnnoUscita = Anno(c.ReleaseDate ?? c.FirstAirDate),
-                        DataUscita = string.IsNullOrEmpty(c.ReleaseDate ?? c.FirstAirDate) ? null : c.ReleaseDate ?? c.FirstAirDate,
-                        LocandinaUrl = Immagine(c.PosterPath, "w342"),
-                        Descrizione = c.Overview
-                    }).ToList();
+                var titoli = await TitoliPersona(p.Id, regista, tipo, null, null);
                 if (titoli.Count == 0) continue;
                 persone.Add(new PersonaTmdbDto
                 {
@@ -88,12 +70,131 @@ namespace CinemaApi.Services
                     Nome = p.Name ?? "",
                     Ruolo = regista ? "Regista" : "Attore",
                     FotoUrl = Immagine(p.ProfilePath, "w185"),
-                    Titoli = titoli
+                    Titoli = titoli.Take(20).ToList()
                 });
             }
 
             _cache.Set(chiave, persone, TimeSpan.FromHours(6));
             return CopiaPersone(persone);
+        }
+
+        // Una persona compare se è entro questi primi risultati della ricerca multi
+        private const int PosizioniPersona = 3;
+
+        // Filtri precisi del catalogo su TMDB: regista, attore, anno e genere, combinabili.
+        // - con regista e/o attore: i titoli diretti dal regista / in cui recita l'attore (se ci sono
+        //   tutti e due, quelli in comune), filtrati per anno, genere e tipo. Tutti in una pagina.
+        // - senza persone: "discover" di TMDB per anno e genere, i più popolari prima, a pagine.
+        public async Task<TmdbScopertaDto> Scopri(string? regista, string? attore, int? anno, GenereTmdb? genere, string? tipo, int pagina = 1)
+        {
+            var esito = new TmdbScopertaDto { Pagina = pagina };
+
+            if (regista != null || attore != null)
+            {
+                var persRegista = regista == null ? null : await PersonaPerNome(regista, "Directing");
+                var persAttore = attore == null ? null : await PersonaPerNome(attore, "Acting");
+                esito.Regista = persRegista?.Name;
+                esito.Attore = persAttore?.Name;
+                if ((regista != null && persRegista == null) || (attore != null && persAttore == null))
+                {
+                    esito.PersonaNonTrovata = true;
+                    return esito;
+                }
+
+                List<TmdbRisultatoDto>? titoli = null;
+                if (persRegista != null) titoli = await TitoliPersona(persRegista.Id, true, tipo, anno, genere);
+                if (persAttore != null)
+                {
+                    var conAttore = await TitoliPersona(persAttore.Id, false, tipo, anno, genere);
+                    titoli = titoli == null ? conAttore
+                        : titoli.Where(t => conAttore.Any(a => a.TmdbId == t.TmdbId && a.Tipo == t.Tipo)).ToList();
+                }
+                esito.Risultati = titoli!.Take(60).ToList();
+                esito.TotalePagine = 1;
+                esito.TotaleRisultati = esito.Risultati.Count;
+                return esito;
+            }
+
+            var filtri = new List<(string Tipo, string Url)>();
+            if (tipo != TipiTitolo.Serie)
+            {
+                var url = $"discover/movie?language={Lingua}&include_adult=false&sort_by=popularity.desc&page={pagina}";
+                if (anno != null) url += $"&primary_release_year={anno}";
+                if (genere != null) url += $"&with_genres={genere.IdFilm}";
+                filtri.Add((TipiTitolo.Film, url));
+            }
+            // Un genere che per le serie non esiste (es. Horror) esclude le serie
+            if (tipo != TipiTitolo.Film && (genere == null || genere.IdSerie != null))
+            {
+                var url = $"discover/tv?language={Lingua}&include_adult=false&sort_by=popularity.desc&page={pagina}"
+                          + $"&without_genres={GenereTalk},{GenereNotizie}";
+                if (anno != null) url += $"&first_air_date_year={anno}";
+                if (genere != null) url += $"&with_genres={genere.IdSerie}";
+                filtri.Add((TipiTitolo.Serie, url));
+            }
+
+            foreach (var (tipoRisultati, url) in filtri)
+            {
+                var risposta = await GetInCache<RispostaCrediti>(url, TimeSpan.FromHours(6)) ?? new RispostaCrediti();
+                esito.Risultati.AddRange(risposta.Results.Select(r => Risultato(r, tipoRisultati)));
+                esito.TotalePagine = Math.Max(esito.TotalePagine, Math.Min(risposta.TotalPages, 500));
+                esito.TotaleRisultati += risposta.TotalResults;
+            }
+            // Film e serie mescolati per popolarità
+            esito.Risultati = esito.Risultati.OrderByDescending(r => r.Popolarita).ToList();
+            return esito;
+        }
+
+        // La persona più rilevante con quel nome: prima chi ha il ruolo cercato (regista/attore), altrimenti la prima
+        private async Task<PersonaRicerca?> PersonaPerNome(string nome, string dipartimento)
+        {
+            var risposta = await GetInCache<RispostaPersone>(
+                $"search/person?query={Uri.EscapeDataString(nome.Trim())}&language={Lingua}&include_adult=false", TimeSpan.FromHours(6));
+            var trovate = risposta?.Results ?? new List<PersonaRicerca>();
+            return trovate.FirstOrDefault(p => p.KnownForDepartment == dipartimento) ?? trovate.FirstOrDefault();
+        }
+
+        // Titoli di una persona, i più popolari prima: diretti (regista) o in cui recita (attore)
+        private async Task<List<TmdbRisultatoDto>> TitoliPersona(int idPersona, bool regista, string? tipo, int? anno, GenereTmdb? genere)
+        {
+            var crediti = await GetInCache<CreditiPersona>($"person/{idPersona}/combined_credits?language={Lingua}", TimeSpan.FromHours(12));
+            if (crediti == null) return new List<TmdbRisultatoDto>();
+            var lavori = regista ? crediti.Crew.Where(c => c.Job == "Director") : crediti.Cast;
+            return lavori
+                .Where(c => c.MediaType is "movie" or "tv")
+                .Where(c => tipo == null || (c.MediaType == "tv") == (tipo == TipiTitolo.Serie))
+                // Talk show e notiziari: chi recita ci compare come ospite, non sono "suoi" titoli
+                .Where(c => !c.GenreIds.Contains(GenereTalk) && !c.GenreIds.Contains(GenereNotizie))
+                .Where(c => anno == null || Anno(c.ReleaseDate ?? c.FirstAirDate) == anno)
+                .Where(c => genere == null || (c.MediaType == "tv"
+                    ? genere.IdSerie != null && c.GenreIds.Contains(genere.IdSerie.Value)
+                    : c.GenreIds.Contains(genere.IdFilm)))
+                .GroupBy(c => (c.MediaType, c.Id)).Select(g => g.First())
+                .OrderByDescending(c => c.Popularity)
+                .Select(c => Risultato(c, c.MediaType == "tv" ? TipiTitolo.Serie : TipiTitolo.Film))
+                .ToList();
+        }
+
+        private static TmdbRisultatoDto Risultato(CreditoPersona c, string tipo) => new()
+        {
+            TmdbId = c.Id,
+            Tipo = tipo,
+            Titolo = c.Title ?? c.Name ?? c.OriginalTitle ?? c.OriginalName ?? "",
+            TitoloOriginale = c.OriginalTitle ?? c.OriginalName,
+            AnnoUscita = Anno(c.ReleaseDate ?? c.FirstAirDate),
+            DataUscita = string.IsNullOrEmpty(c.ReleaseDate ?? c.FirstAirDate) ? null : c.ReleaseDate ?? c.FirstAirDate,
+            LocandinaUrl = Immagine(c.PosterPath, "w342"),
+            Descrizione = c.Overview,
+            Popolarita = c.Popularity
+        };
+
+        private async Task<T?> GetInCache<T>(string url, TimeSpan durata) where T : class
+        {
+            var chiave = "tmdb:get:" + url;
+            if (_cache.TryGetValue(chiave, out T? inCache) && inCache != null) return inCache;
+            var valore = await Get<T>(url);
+            if (valore != null) _cache.Set(chiave, valore, durata);
+            return valore;
         }
 
         // Generi TMDB delle serie da escludere dai titoli di una persona
@@ -446,6 +547,24 @@ namespace CinemaApi.Services
 
             public string? PosterPath { get; set; }
             public string? Overview { get; set; }
+        }
+
+        private class RispostaMulti
+        {
+            public List<RisultatoMulti> Results { get; set; } = new();
+        }
+
+        private class RisultatoMulti : PersonaRicerca
+        {
+            // "movie", "tv" o "person"
+            public string? MediaType { get; set; }
+        }
+
+        private class RispostaCrediti
+        {
+            public int TotalPages { get; set; }
+            public int TotalResults { get; set; }
+            public List<CreditoPersona> Results { get; set; } = new();
         }
 
         private class RispostaPersone

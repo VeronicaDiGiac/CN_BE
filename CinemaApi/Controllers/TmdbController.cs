@@ -66,6 +66,35 @@ namespace CinemaApi.Controllers
             return Ok(persone);
         }
 
+        // Filtri del catalogo su TMDB: regista, attore, anno e genere (dall'elenco di /generi), combinabili
+        [HttpGet("scopri")]
+        [ProducesResponseType(typeof(TmdbScopertaDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(429)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> Scopri(string? regista, string? attore, int? anno, string? genere, string? tipo = null, int pagina = 1)
+        {
+            regista = string.IsNullOrWhiteSpace(regista) ? null : regista.Trim();
+            attore = string.IsNullOrWhiteSpace(attore) ? null : attore.Trim();
+            var genereTmdb = GeneriTmdb.Trova(genere);
+            if (!string.IsNullOrWhiteSpace(genere) && genereTmdb == null) return BadRequest("Genere non valido");
+            if (regista == null && attore == null && anno == null && genereTmdb == null)
+                return BadRequest("Indica almeno un filtro");
+            if (anno != null && (anno < 1870 || anno > DateTime.Now.Year + 5)) return BadRequest("Anno non valido");
+            if (pagina < 1 || pagina > 500) return BadRequest("Pagina non valida");
+            var tipoTitolo = tipo == null ? null : TipiTitolo.Normalizza(tipo);
+            if (tipo != null && tipoTitolo == null) return BadRequest("Tipo non valido: Film o Serie");
+
+            var esito = await _tmdbService.Scopri(regista, attore, anno, genereTmdb, tipoTitolo, pagina);
+            await SegnaGiaNelCatalogo(new TmdbRicercaDto { Risultati = esito.Risultati });
+            return Ok(esito);
+        }
+
+        // Generi per il filtro del catalogo (validi sia per il catalogo sia per TMDB)
+        [HttpGet("generi")]
+        [ProducesResponseType(typeof(List<GenereDto>), 200)]
+        public IActionResult Generi() => Ok(GeneriTmdb.Tutti.Select(g => new GenereDto { Nome = g.Nome }).ToList());
+
         // Elenchi pubblici per il catalogo: alcinema, tendenze, popolari, inarrivo,
         // serie-tendenze, serie-popolari, serie-inonda (Helpers.CategorieTmdb)
         [HttpGet("elenco/{categoria}")]
