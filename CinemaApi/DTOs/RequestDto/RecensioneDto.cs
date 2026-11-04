@@ -1,4 +1,4 @@
-﻿namespace CinemaApi.DTOs.RequestDto
+namespace CinemaApi.DTOs.RequestDto
 {
     public class RecensioneDto
     {
@@ -6,6 +6,8 @@
 
         public int IdUtente { get; set; }
         public string? UserName { get; set; }
+        // true se l'autore è un amministratore: il FE mostra l'etichetta "Admin" accanto al nome
+        public bool AutoreAdmin { get; set; }
         public string? TitoloFilm { get; set; }
         public int? Voto { get; set; }
         public string? Contenuto { get; set; }

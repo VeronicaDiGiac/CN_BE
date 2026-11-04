@@ -51,6 +51,7 @@ namespace CinemaApi.Services
                 IdFilm = d.IdFilm,
                 IdUtente = d.IdUtente,
                 UserName = d.Utente!.UserName,
+                AutoreAdmin = d.Utente.Ruolo == Ruoli.Admin,
                 AvatarUrl = d.Utente.AvatarUrl,
                 Titolo = d.Titolo,
                 Contenuto = d.Contenuto,

@@ -8,6 +8,8 @@ namespace CinemaApi.DTOs.ResponseDto
 
         public int IdUtente { get; set; }
         public string? UserName { get; set; }
+        // true se l'autore è un amministratore: il FE mostra l'etichetta "Admin" accanto al nome
+        public bool AutoreAdmin { get; set; }
         public string? Contenuto { get; set; }
         public DateTime? DataCommento { get; set; }
         public int? IdCommentoPadre { get; set; }
