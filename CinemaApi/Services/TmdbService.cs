@@ -44,6 +44,72 @@ namespace CinemaApi.Services
             return ElencoTmdb(url, $"tmdb:cerca:{tipo}:{testo.ToLowerInvariant()}:{pagina}:{anno}", TimeSpan.FromMinutes(10), tipo);
         }
 
+        // Persone che corrispondono al testo (al massimo 2, le più rilevanti) con i loro titoli più noti:
+        // per un attore i film/serie in cui recita, per un regista quelli che ha diretto.
+        // tipo: solo film o solo serie; null = entrambi
+        public async Task<List<PersonaTmdbDto>> CercaPersone(string testo, string? tipo = null)
+        {
+            var chiave = $"tmdb:persone:{testo.ToLowerInvariant()}:{tipo}";
+            if (_cache.TryGetValue(chiave, out List<PersonaTmdbDto>? inCache) && inCache != null) return CopiaPersone(inCache);
+
+            var ricerca = await Get<RispostaPersone>(
+                $"search/person?query={Uri.EscapeDataString(testo)}&language={Lingua}&include_adult=false") ?? new RispostaPersone();
+            var persone = new List<PersonaTmdbDto>();
+            // Solo chi recita o dirige: sceneggiatori, produttori… porterebbero risultati poco utili
+            foreach (var p in ricerca.Results.Where(p => p.KnownForDepartment is "Acting" or "Directing").Take(2))
+            {
+                var crediti = await Get<CreditiPersona>($"person/{p.Id}/combined_credits?language={Lingua}");
+                if (crediti == null) continue;
+                var regista = p.KnownForDepartment == "Directing";
+                var lavori = regista ? crediti.Crew.Where(c => c.Job == "Director") : crediti.Cast;
+                var titoli = lavori
+                    .Where(c => c.MediaType is "movie" or "tv")
+                    .Where(c => tipo == null || (c.MediaType == "tv") == (tipo == TipiTitolo.Serie))
+                    // Talk show e notiziari: chi recita ci compare come ospite, non sono "suoi" titoli
+                    .Where(c => !c.GenreIds.Contains(GenereTalk) && !c.GenreIds.Contains(GenereNotizie))
+                    .GroupBy(c => (c.MediaType, c.Id)).Select(g => g.First())
+                    .OrderByDescending(c => c.Popularity)
+                    .Take(20)
+                    .Select(c => new TmdbRisultatoDto
+                    {
+                        TmdbId = c.Id,
+                        Tipo = c.MediaType == "tv" ? TipiTitolo.Serie : TipiTitolo.Film,
+                        Titolo = c.Title ?? c.Name ?? c.OriginalTitle ?? c.OriginalName ?? "",
+                        TitoloOriginale = c.OriginalTitle ?? c.OriginalName,
+                        AnnoUscita = Anno(c.ReleaseDate ?? c.FirstAirDate),
+                        DataUscita = string.IsNullOrEmpty(c.ReleaseDate ?? c.FirstAirDate) ? null : c.ReleaseDate ?? c.FirstAirDate,
+                        LocandinaUrl = Immagine(c.PosterPath, "w342"),
+                        Descrizione = c.Overview
+                    }).ToList();
+                if (titoli.Count == 0) continue;
+                persone.Add(new PersonaTmdbDto
+                {
+                    TmdbId = p.Id,
+                    Nome = p.Name ?? "",
+                    Ruolo = regista ? "Regista" : "Attore",
+                    FotoUrl = Immagine(p.ProfilePath, "w185"),
+                    Titoli = titoli
+                });
+            }
+
+            _cache.Set(chiave, persone, TimeSpan.FromHours(6));
+            return CopiaPersone(persone);
+        }
+
+        // Generi TMDB delle serie da escludere dai titoli di una persona
+        private const int GenereTalk = 10767;
+        private const int GenereNotizie = 10763;
+
+        // La cache non va modificata da chi riceve il risultato (il controller valorizza IdFilm)
+        private static List<PersonaTmdbDto> CopiaPersone(List<PersonaTmdbDto> persone) => persone.Select(p => new PersonaTmdbDto
+        {
+            TmdbId = p.TmdbId,
+            Nome = p.Nome,
+            Ruolo = p.Ruolo,
+            FotoUrl = p.FotoUrl,
+            Titoli = Copia(new TmdbRicercaDto { Risultati = p.Titoli }).Risultati
+        }).ToList();
+
         // Su TMDB i film stanno sotto /movie, le serie sotto /tv
         private static string Percorso(string tipo) => tipo == TipiTitolo.Serie ? "tv" : "movie";
 
@@ -380,6 +446,34 @@ namespace CinemaApi.Services
 
             public string? PosterPath { get; set; }
             public string? Overview { get; set; }
+        }
+
+        private class RispostaPersone
+        {
+            public List<PersonaRicerca> Results { get; set; } = new();
+        }
+
+        private class PersonaRicerca
+        {
+            public int Id { get; set; }
+            public string? Name { get; set; }
+            public string? KnownForDepartment { get; set; }
+            public string? ProfilePath { get; set; }
+        }
+
+        private class CreditiPersona
+        {
+            public List<CreditoPersona> Cast { get; set; } = new();
+            public List<CreditoPersona> Crew { get; set; } = new();
+        }
+
+        private class CreditoPersona : RisultatoRicerca
+        {
+            // "movie" o "tv"
+            public string? MediaType { get; set; }
+            public string? Job { get; set; }
+            public double Popularity { get; set; }
+            public List<int> GenreIds { get; set; } = new();
         }
 
         private class RispostaSerie : RisultatoRicerca

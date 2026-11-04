@@ -46,6 +46,26 @@ namespace CinemaApi.Controllers
             return Ok(risultato);
         }
 
+        // Attori e registi che corrispondono al testo, con i loro titoli più noti
+        // (la barra di ricerca: "leonardo di caprio" deve trovare i suoi film, non solo i titoli che lo citano)
+        [HttpGet("persone")]
+        [ProducesResponseType(typeof(List<PersonaTmdbDto>), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(429)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> Persone(string q, string? tipo = null)
+        {
+            if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 3)
+                return BadRequest("Scrivi almeno 3 caratteri");
+            var tipoTitolo = tipo == null ? null : TipiTitolo.Normalizza(tipo);
+            if (tipo != null && tipoTitolo == null) return BadRequest("Tipo non valido: Film o Serie");
+
+            var persone = await _tmdbService.CercaPersone(q.Trim(), tipoTitolo);
+            foreach (var p in persone)
+                await SegnaGiaNelCatalogo(new TmdbRicercaDto { Risultati = p.Titoli });
+            return Ok(persone);
+        }
+
         // Elenchi pubblici per il catalogo: alcinema, tendenze, popolari, inarrivo,
         // serie-tendenze, serie-popolari, serie-inonda (Helpers.CategorieTmdb)
         [HttpGet("elenco/{categoria}")]

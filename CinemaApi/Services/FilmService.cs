@@ -91,7 +91,8 @@ namespace CinemaApi.Services
         // quelli della pagina richiesta.
 
         // tipo: TipiTitolo.Film, TipiTitolo.Serie oppure null per tutti
-        public async Task<PagedResultDto<FilmDto>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize, string? ordinamento = null, string? tipo = null)
+        // testo: ricerca libera (barra di ricerca) su titolo, regista e attori insieme
+        public async Task<PagedResultDto<FilmDto>> GetFilm(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber, int pageSize, string? ordinamento = null, string? tipo = null, string? testo = null)
         {
             //Da Ricordare : la query costruita non è ancora eseguita, la uso due volte, una volta per contare il totale una volta per prendere la pagina specifica, se eseguissi ToListAsync non si potrebbe contare niente.
             var query = _db.Film
@@ -101,6 +102,7 @@ namespace CinemaApi.Services
                 .Where(f => annoUscita == null || f.AnnoUscita == annoUscita)
                 .Where(f => attori == null || f.Attori.Contains(attori))
                 .Where(f => tipo == null || f.Tipo == tipo)
+                .Where(f => testo == null || f.Titolo.Contains(testo) || f.Regista.Contains(testo) || f.Attori.Contains(testo))
                 .Where(f => f.Stato == StatiFilm.Approvato);
 
 

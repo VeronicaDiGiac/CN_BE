@@ -39,6 +39,17 @@ namespace CinemaApi.DTOs.ResponseDto
         public string? LogoUrl { get; set; }
     }
 
+    // Una persona trovata su TMDB (attore o regista) con i suoi titoli più noti
+    public class PersonaTmdbDto
+    {
+        public int TmdbId { get; set; }
+        public string Nome { get; set; } = "";
+        // "Attore" o "Regista": decide quali titoli ci sono (film in cui recita o che ha diretto)
+        public string Ruolo { get; set; } = "";
+        public string? FotoUrl { get; set; }
+        public List<TmdbRisultatoDto> Titoli { get; set; } = new();
+    }
+
     public class TmdbRicercaDto
     {
         public int Pagina { get; set; }

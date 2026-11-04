@@ -36,12 +36,14 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(500)]
         // ordinamento: recenti (predefinito), voto, titolo (Helpers.OrdinamentiCatalogo)
         // tipo: Film o Serie (Helpers.TipiTitolo); senza, tutti i titoli
+        // q: ricerca libera della barra di ricerca (titolo, regista o attori)
         [ProducesResponseType(400)]
-        public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber = 1, int pageSize = 20, string? ordinamento = null, string? tipo = null)
+        public async Task<IActionResult> Get(string? titolo, string? regista, int? annoUscita, string? genere, string? attori, int pageNumber = 1, int pageSize = 20, string? ordinamento = null, string? tipo = null, string? q = null)
         {
             var tipoTitolo = TipiTitolo.Normalizza(tipo);
             if (tipo != null && tipoTitolo == null) return BadRequest("Tipo non valido: Film o Serie");
-            var risultato = await _filmService.GetFilm(titolo, regista, annoUscita, genere, attori, pageNumber, pageSize, ordinamento, tipoTitolo);
+            var testo = string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+            var risultato = await _filmService.GetFilm(titolo, regista, annoUscita, genere, attori, pageNumber, pageSize, ordinamento, tipoTitolo, testo);
             return Ok(risultato);
         }
 
