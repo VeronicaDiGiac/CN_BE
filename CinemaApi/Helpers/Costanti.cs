@@ -93,6 +93,15 @@ namespace CinemaApi.Helpers
         public const string Titolo = "titolo";
     }
 
+    // Tipi di voce dell'attività recente nel pannello dell'admin
+    public static class TipiAttivitaAdmin
+    {
+        public const string Iscrizione = "Iscrizione";
+        public const string Recensione = "Recensione";
+        public const string Discussione = "Discussione";
+        public const string Commento = "Commento";
+    }
+
     public static class TipiContenuto
     {
         public const string Recensione = "Recensione";
