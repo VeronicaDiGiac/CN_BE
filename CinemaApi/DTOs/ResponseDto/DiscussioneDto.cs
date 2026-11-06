@@ -21,6 +21,8 @@ namespace CinemaApi.DTOs.ResponseDto
         public DateTime DataCreazione { get; set; }
         public DateTime DataUltimaAttivita { get; set; }
         public int NumeroCommenti { get; set; }
+        // Filo dei commenti di un episodio: niente "mi piace", modifica o eliminazione da parte dell'utente
+        public bool FiloEpisodio { get; set; }
         public int NumeroMiPiace { get; set; }
         public bool MiPiaceUtente { get; set; }
     }

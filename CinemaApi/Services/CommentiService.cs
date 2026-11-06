@@ -161,17 +161,17 @@ namespace CinemaApi.Services
 
         // Dove sta un commento: autore e film del contenitore (recensione o discussione).
         // Proiezione e non FindAsync: caricare le entità le collegherebbe al commento appena creato
-        private async Task<(int IdAutore, int IdFilm)?> Contenitore(Commento commento)
+        private async Task<(int IdAutore, int IdFilm, bool FiloEpisodio)?> Contenitore(Commento commento)
         {
             if (commento.IdRecensione != null)
             {
                 var r = await _db.Recensioni.Where(x => x.IdRecensione == commento.IdRecensione)
                     .Select(x => new { x.IdUtente, x.IdFilm }).FirstOrDefaultAsync();
-                return r == null ? null : (r.IdUtente, r.IdFilm);
+                return r == null ? null : (r.IdUtente, r.IdFilm, false);
             }
             var d = await _db.Discussioni.Where(x => x.IdDiscussione == commento.IdDiscussione)
-                .Select(x => new { x.IdUtente, x.IdFilm }).FirstOrDefaultAsync();
-            return d == null ? null : (d.IdUtente, d.IdFilm);
+                .Select(x => new { x.IdUtente, x.IdFilm, x.FiloEpisodio }).FirstOrDefaultAsync();
+            return d == null ? null : (d.IdUtente, d.IdFilm, d.FiloEpisodio);
         }
 
         // Avvisa l'autore della recensione (o della discussione) e, per le risposte, l'autore del
@@ -181,7 +181,7 @@ namespace CinemaApi.Services
         {
             var contenitore = await Contenitore(commento);
             if (contenitore == null) return;
-            var (idAutore, idFilm) = contenitore.Value;
+            var (idAutore, idFilm, filoEpisodio) = contenitore.Value;
 
             int? autorePadre = null;
             if (idRispostaA != null)
@@ -195,7 +195,8 @@ namespace CinemaApi.Services
                         idFilm, commento.IdRecensione, commento.IdCommento, commento.IdDiscussione);
             }
 
-            if (idAutore != autorePadre)
+            // Nel filo dei commenti di un episodio non c'è un autore da avvisare: solo le risposte
+            if (idAutore != autorePadre && !filoEpisodio)
                 await _notifiche.Notifica(idAutore, commento.IdUtente,
                     commento.IdDiscussione != null ? TipiNotifica.CommentoDiscussione : TipiNotifica.CommentoRecensione,
                     idFilm, commento.IdRecensione, commento.IdCommento, commento.IdDiscussione);

@@ -19,6 +19,9 @@ namespace CinemaApi.Models
         public int? Episodio { get; set; }
         public DateTime DataCreazione { get; set; }
         public DateTime DataUltimaAttivita { get; set; }
+        // Filo dei commenti di un episodio (Database/FiliEpisodio.sql): uno per episodio, creato al primo
+        // commento, senza titolo scelto dall'utente; non compare nell'elenco delle discussioni
+        public bool FiloEpisodio { get; set; }
 
         [ForeignKey("IdFilm")]
         public Film? Film { get; set; }

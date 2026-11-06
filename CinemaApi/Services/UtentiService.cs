@@ -73,6 +73,21 @@ namespace CinemaApi.Services
                 .ToListAsync();
             await EliminazioneHelper.EliminaRecensioni(_db, idRecensioni);
 
+            // I fili dei commenti degli episodi aperti da lui non sono "suoi": passano a chi altro ha commentato
+            // (il primo in ordine di tempo); se ha commentato solo lui si eliminano con le sue discussioni
+            var fili = await _db.Discussioni
+                .Where(d => d.IdUtente == id && d.FiloEpisodio)
+                .Select(d => new
+                {
+                    d.IdDiscussione,
+                    Altro = _db.Commenti.Where(c => c.IdDiscussione == d.IdDiscussione && c.IdUtente != id)
+                        .OrderBy(c => c.DataCommento).Select(c => (int?)c.IdUtente).FirstOrDefault()
+                })
+                .ToListAsync();
+            foreach (var f in fili.Where(f => f.Altro != null))
+                await _db.Discussioni.Where(d => d.IdDiscussione == f.IdDiscussione)
+                    .ExecuteUpdateAsync(s => s.SetProperty(d => d.IdUtente, f.Altro!.Value));
+
             // Le sue discussioni (con i messaggi degli altri dentro)
             var idDiscussioni = await _db.Discussioni
                 .Where(d => d.IdUtente == id)

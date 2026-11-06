@@ -74,6 +74,7 @@ namespace CinemaApi.Services
 
             if (tipo == null || tipo == TipiAttivitaAdmin.Discussione)
                 voci.AddRange(await _db.Discussioni
+                    .Where(d => !d.FiloEpisodio)
                     .OrderByDescending(d => d.DataCreazione).Take(limite)
                     .Select(d => new AttivitaAdminDto
                     {

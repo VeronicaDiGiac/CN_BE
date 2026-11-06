@@ -31,7 +31,7 @@ namespace CinemaApi.Services
         {
             var query = Proietta(
                 _db.Discussioni
-                    .Where(d => d.IdFilm == idFilm)
+                    .Where(d => d.IdFilm == idFilm && !d.FiloEpisodio)
                     .Where(d => stagione == null || (d.Stagione == stagione && d.Episodio == episodio)),
                 idUtenteAutenticato);
 
@@ -65,9 +65,56 @@ namespace CinemaApi.Services
                 DataCreazione = d.DataCreazione,
                 DataUltimaAttivita = d.DataUltimaAttivita,
                 NumeroCommenti = d.Commenti!.Count(),
+                FiloEpisodio = d.FiloEpisodio,
                 NumeroMiPiace = d.MiPiace!.Count(),
                 MiPiaceUtente = idUtente != null && d.MiPiace!.Any(m => m.IdUtente == idUtente)
             });
+
+        // ---- Commenti di un episodio ----
+
+        // Il filo dei commenti di un episodio, null se nessuno ha ancora commentato
+        public Task<DiscussioneDto?> GetFiloEpisodio(int idFilm, int stagione, int episodio, int? idUtenteAutenticato) =>
+            Proietta(_db.Discussioni.Where(d => d.FiloEpisodio && d.IdFilm == idFilm && d.Stagione == stagione && d.Episodio == episodio),
+                idUtenteAutenticato).FirstOrDefaultAsync();
+
+        // Il filo di un episodio, creato se non c'è ancora (chi commenta per primo ne è il "proprietario" tecnico,
+        // che non si vede e non dà permessi). Ritorna l'id della discussione.
+        public async Task<int> FiloEpisodio(int idFilm, int stagione, int episodio, int idUtente)
+        {
+            var esistente = await IdFilo(idFilm, stagione, episodio);
+            if (esistente != null) return esistente.Value;
+
+            var adesso = DateTime.Now;
+            var filo = new Discussione
+            {
+                IdFilm = idFilm,
+                IdUtente = idUtente,
+                Titolo = $"Commenti all'episodio S{stagione} E{episodio}",
+                Stagione = stagione,
+                Episodio = episodio,
+                FiloEpisodio = true,
+                DataCreazione = adesso,
+                DataUltimaAttivita = adesso
+            };
+            _db.Discussioni.Add(filo);
+            try
+            {
+                await _db.SaveChangesAsync();
+                return filo.IdDiscussione;
+            }
+            catch (DbUpdateException)
+            {
+                // Due primi commenti nello stesso momento: l'indice UX_Discussioni_FiloEpisodio ha tenuto l'altro
+                _db.Entry(filo).State = EntityState.Detached;
+                return (await IdFilo(idFilm, stagione, episodio))!.Value;
+            }
+        }
+
+        private Task<int?> IdFilo(int idFilm, int stagione, int episodio) =>
+            _db.Discussioni
+                .Where(d => d.FiloEpisodio && d.IdFilm == idFilm && d.Stagione == stagione && d.Episodio == episodio)
+                .Select(d => (int?)d.IdDiscussione)
+                .FirstOrDefaultAsync();
 
         public async Task<int> Crea(SalvaDiscussioneDto dto, int idUtente)
         {

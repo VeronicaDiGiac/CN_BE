@@ -25,6 +25,30 @@ namespace CinemaApi.Controllers
             return Ok(await _discussioni.GetDiscussioni(idFilm, stagione, episodio, ordinamento, User.IdUtenteOpzionale()));
         }
 
+        // Commenti di un episodio: il filo, se qualcuno ha già commentato (altrimenti 204).
+        // I commenti si leggono e scrivono con /api/commenti?idDiscussione=
+        [HttpGet("episodio")]
+        [ProducesResponseType(typeof(DiscussioneDto), 200)]
+        [ProducesResponseType(204)]
+        public async Task<IActionResult> GetFiloEpisodio(int idFilm, int stagione, int episodio)
+        {
+            var filo = await _discussioni.GetFiloEpisodio(idFilm, stagione, episodio, User.IdUtenteOpzionale());
+            return filo == null ? NoContent() : Ok(filo);
+        }
+
+        // Il filo dell'episodio, creato al primo commento: il FE lo chiama prima di scrivere il commento
+        [HttpPost("episodio")]
+        [Authorize]
+        [ProducesResponseType(typeof(int), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> FiloEpisodio([FromBody] FiloEpisodioDto dto)
+        {
+            if (!await _discussioni.FilmEsiste(dto.IdFilm)) return NotFound("Serie non trovata");
+            if (!await _discussioni.ESerie(dto.IdFilm)) return BadRequest("Solo le serie hanno episodi");
+            return Ok(await _discussioni.FiloEpisodio(dto.IdFilm, dto.Stagione, dto.Episodio, User.IdUtente()));
+        }
+
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(DiscussioneDto), 200)]
         [ProducesResponseType(404)]
@@ -62,7 +86,7 @@ namespace CinemaApi.Controllers
             if (string.IsNullOrWhiteSpace(dto.Titolo)) return BadRequest("Il titolo è obbligatorio");
             var discussione = await _discussioni.GetDiscussioneById(id);
             if (discussione == null) return NotFound();
-            if (!AutorizzazioneHelper.PuoModificare(discussione.IdUtente, User.IdUtente(), User.Ruolo())) return Forbid();
+            if (discussione.FiloEpisodio || !AutorizzazioneHelper.PuoModificare(discussione.IdUtente, User.IdUtente(), User.Ruolo())) return Forbid();
             await _discussioni.Aggiorna(discussione, dto);
             return NoContent();
         }
@@ -77,7 +101,8 @@ namespace CinemaApi.Controllers
         {
             var discussione = await _discussioni.GetDiscussioneById(id);
             if (discussione == null) return NotFound();
-            if (!AutorizzazioneHelper.PuoModificare(discussione.IdUtente, User.IdUtente(), User.Ruolo())) return Forbid();
+            if (discussione.FiloEpisodio ? User.Ruolo() != Ruoli.Admin
+                : !AutorizzazioneHelper.PuoModificare(discussione.IdUtente, User.IdUtente(), User.Ruolo())) return Forbid();
             await _discussioni.Elimina(id);
             return NoContent();
         }
@@ -92,6 +117,7 @@ namespace CinemaApi.Controllers
         {
             var discussione = await _discussioni.GetDiscussioneById(id);
             if (discussione == null) return NotFound();
+            if (discussione.FiloEpisodio) return BadRequest("Ai commenti di un episodio si mette \"mi piace\" uno per uno");
             if (discussione.IdUtente == User.IdUtente()) return BadRequest("Non puoi mettere \"mi piace\" alla tua discussione");
             await _discussioni.MettiMiPiace(discussione, User.IdUtente());
             return NoContent();
