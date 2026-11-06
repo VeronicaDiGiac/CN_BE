@@ -23,8 +23,8 @@ namespace CinemaApi.Services
         {
             // Anni con almeno un film o un episodio visto
             var anni = (await _db.Visioni
-                    .Where(v => v.IdUtente == idUtente)
-                    .Select(v => v.DataVisione.Year)
+                    .Where(v => v.IdUtente == idUtente && v.DataVisione != null)
+                    .Select(v => v.DataVisione!.Value.Year)
                     .Distinct()
                     .ToListAsync())
                 .Union(await _db.EpisodiVisti
@@ -35,8 +35,9 @@ namespace CinemaApi.Services
                 .OrderByDescending(a => a)
                 .ToList();
 
+            // Le visioni senza data contano nel totale di sempre, ma non in un anno preciso
             var visioni = await _db.Visioni
-                .Where(v => v.IdUtente == idUtente && (anno == null || v.DataVisione.Year == anno))
+                .Where(v => v.IdUtente == idUtente && (anno == null || (v.DataVisione != null && v.DataVisione.Value.Year == anno)))
                 .Select(v => new
                 {
                     v.IdFilm,
@@ -81,9 +82,10 @@ namespace CinemaApi.Services
 
             stat.Andamento = anno != null
                 ? Enumerable.Range(1, 12)
-                    .Select(m => new VoceClassificaDto { Nome = Mesi[m - 1], Conteggio = visioni.Count(v => v.DataVisione.Month == m) })
+                    .Select(m => new VoceClassificaDto { Nome = Mesi[m - 1], Conteggio = visioni.Count(v => v.DataVisione?.Month == m) })
                     .ToList()
-                : visioni.GroupBy(v => v.DataVisione.Year)
+                // L'andamento per anno usa solo le visioni con la data
+                : visioni.Where(v => v.DataVisione != null).GroupBy(v => v.DataVisione!.Value.Year)
                     .OrderBy(g => g.Key)
                     .Select(g => new VoceClassificaDto { Nome = g.Key.ToString(), Conteggio = g.Count() })
                     .ToList();
@@ -109,13 +111,14 @@ namespace CinemaApi.Services
             if (votoPiuAlto != null)
                 stat.FilmVotoPiuAlto = new FilmStatisticaDto { IdFilm = votoPiuAlto.IdFilm, Titolo = votoPiuAlto.Titolo, ImmagineUrl = votoPiuAlto.ImmagineUrl, Dettaglio = votoPiuAlto.Voto.ToString() };
 
-            var ordinate = visioni.OrderBy(v => v.DataVisione).ThenBy(v => v.IdVisione).ToList();
+            // Prima e ultima visione: solo tra quelle con la data
+            var ordinate = visioni.Where(v => v.DataVisione != null).OrderBy(v => v.DataVisione).ThenBy(v => v.IdVisione).ToList();
             if (ordinate.Count > 0)
             {
                 var prima = ordinate[0];
                 var ultima = ordinate[^1];
-                stat.PrimaVisione = new FilmStatisticaDto { IdFilm = prima.IdFilm, Titolo = prima.Titolo, ImmagineUrl = prima.ImmagineUrl, Dettaglio = prima.DataVisione.ToString("yyyy-MM-dd") };
-                stat.UltimaVisione = new FilmStatisticaDto { IdFilm = ultima.IdFilm, Titolo = ultima.Titolo, ImmagineUrl = ultima.ImmagineUrl, Dettaglio = ultima.DataVisione.ToString("yyyy-MM-dd") };
+                stat.PrimaVisione = new FilmStatisticaDto { IdFilm = prima.IdFilm, Titolo = prima.Titolo, ImmagineUrl = prima.ImmagineUrl, Dettaglio = prima.DataVisione!.Value.ToString("yyyy-MM-dd") };
+                stat.UltimaVisione = new FilmStatisticaDto { IdFilm = ultima.IdFilm, Titolo = ultima.Titolo, ImmagineUrl = ultima.ImmagineUrl, Dettaglio = ultima.DataVisione!.Value.ToString("yyyy-MM-dd") };
             }
 
             return stat;

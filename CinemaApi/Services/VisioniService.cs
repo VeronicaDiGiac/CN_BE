@@ -20,7 +20,8 @@ namespace CinemaApi.Services
 
         public Task<Visione?> GetVisioneById(int id) => _db.Visioni.FindAsync(id).AsTask();
 
-        // Diario di un utente, dalla visione più recente. Pubblico come il resto del profilo.
+        // Diario di un utente, dalla visione più recente; quelle senza data in fondo (in SQL Server
+        // i NULL vengono per ultimi in ordine decrescente). Pubblico come il resto del profilo.
         public async Task<PagedResultDto<VisioneDto>> GetDiario(int idUtente, int pageNumber, int pageSize)
         {
             var query = _db.Visioni.Where(v => v.IdUtente == idUtente);
@@ -28,6 +29,7 @@ namespace CinemaApi.Services
 
             var voci = await query
                 .OrderByDescending(v => v.DataVisione)
+                .ThenByDescending(v => v.DataCreazione)
                 .ThenByDescending(v => v.IdVisione)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -63,7 +65,7 @@ namespace CinemaApi.Services
             {
                 IdUtente = idUtente,
                 IdFilm = dto.IdFilm,
-                DataVisione = dto.DataVisione ?? DateOnly.FromDateTime(DateTime.Now),
+                DataVisione = dto.SenzaData ? null : dto.DataVisione ?? DateOnly.FromDateTime(DateTime.Now),
                 DataCreazione = DateTime.Now
             };
 

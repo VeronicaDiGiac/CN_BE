@@ -9,5 +9,8 @@ namespace CinemaApi.DTOs.RequestDto
 
         // Se manca vale oggi. Non può essere nel futuro (controllo nel controller).
         public DateOnly? DataVisione { get; set; }
+
+        // true: l'utente non vuole indicare quando l'ha visto (la data resta vuota, DataVisione si ignora)
+        public bool SenzaData { get; set; }
     }
 }

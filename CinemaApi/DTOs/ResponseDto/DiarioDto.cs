@@ -9,7 +9,8 @@ namespace CinemaApi.DTOs.ResponseDto
         public string? TitoloFilm { get; set; }
         public int? AnnoUscita { get; set; }
         public string? ImmagineUrl { get; set; }
-        public DateOnly DataVisione { get; set; }
+        // null se l'utente non ha indicato quando l'ha visto
+        public DateOnly? DataVisione { get; set; }
         // Voto della recensione dell'utente su quel film, se l'ha scritta
         public int? Voto { get; set; }
     }
