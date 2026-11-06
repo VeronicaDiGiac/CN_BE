@@ -62,6 +62,8 @@ namespace CinemaApi.Models
 
         public DbSet<ListaFilm> ListeFilm { get; set; }
 
+        public DbSet<Salvato> Salvati { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -76,6 +78,9 @@ namespace CinemaApi.Models
 
             modelBuilder.Entity<MiPiaceCommento>()
                 .HasKey(m => new { m.IdUtente, m.IdCommento });
+
+            modelBuilder.Entity<Salvato>()
+                .HasKey(s => new { s.IdUtente, s.TipoContenuto, s.IdContenuto });
 
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)

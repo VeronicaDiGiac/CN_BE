@@ -49,7 +49,7 @@ namespace CinemaApi.Helpers
                 .ExecuteDeleteAsync();
         }
 
-        // Elimina le discussioni indicate con tutti i loro messaggi, "mi piace", notifiche e segnalazioni.
+        // Elimina le discussioni indicate con tutti i loro messaggi, "mi piace", notifiche, segnalazioni e salvataggi.
         public static async Task EliminaDiscussioni(CinemaContext db, List<int> idDiscussioni)
         {
             var idCommenti = await db.Commenti
@@ -70,12 +70,16 @@ namespace CinemaApi.Helpers
                 .Where(n => n.IdDiscussione != null && idDiscussioni.Contains(n.IdDiscussione.Value))
                 .ExecuteDeleteAsync();
 
+            await db.Salvati
+                .Where(s => s.TipoContenuto == TipiContenuto.Discussione && idDiscussioni.Contains(s.IdContenuto))
+                .ExecuteDeleteAsync();
+
             await db.Discussioni
                 .Where(d => idDiscussioni.Contains(d.IdDiscussione))
                 .ExecuteDeleteAsync();
         }
 
-        // Elimina le recensioni indicate con tutti i loro commenti e le segnalazioni collegate.
+        // Elimina le recensioni indicate con tutti i loro commenti, le segnalazioni e i salvataggi collegati.
         public static async Task EliminaRecensioni(CinemaContext db, List<int> idRecensioni)
         {
             var idCommenti = await db.Commenti
@@ -94,6 +98,10 @@ namespace CinemaApi.Helpers
 
             await db.Notifiche
                 .Where(n => n.IdRecensione != null && idRecensioni.Contains(n.IdRecensione.Value))
+                .ExecuteDeleteAsync();
+
+            await db.Salvati
+                .Where(s => s.TipoContenuto == TipiContenuto.Recensione && idRecensioni.Contains(s.IdContenuto))
                 .ExecuteDeleteAsync();
 
             await db.Recensioni
