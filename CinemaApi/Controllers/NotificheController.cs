@@ -33,6 +33,18 @@ namespace CinemaApi.Controllers
         public async Task<IActionResult> ContaNonLette() =>
             Ok(await _notificheService.ContaNonLette(User.IdUtente()));
 
+        // Segna lette le notifiche di ciò che l'utente ha appena visto (almeno uno dei parametri):
+        // la notifica cliccata, la scheda di un film, una discussione o il profilo di un nuovo follower
+        [HttpPut("viste")]
+        [ProducesResponseType(typeof(int), 200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> SegnaViste(int? idNotifica, int? idFilm, int? idDiscussione, int? idProfilo)
+        {
+            if (idNotifica == null && idFilm == null && idDiscussione == null && idProfilo == null)
+                return BadRequest("Indica la notifica, il film, la discussione o il profilo visto");
+            return Ok(await _notificheService.SegnaViste(User.IdUtente(), idNotifica, idFilm, idDiscussione, idProfilo));
+        }
+
         [HttpPut("lette")]
         [ProducesResponseType(204)]
         public async Task<IActionResult> SegnaTutteLette()

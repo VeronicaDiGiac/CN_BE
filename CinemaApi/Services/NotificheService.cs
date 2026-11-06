@@ -85,6 +85,19 @@ namespace CinemaApi.Services
         public Task<int> ContaNonLette(int idUtente) =>
             _db.Notifiche.CountAsync(n => n.IdDestinatario == idUtente && !n.Letta);
 
+        // L'utente ha visto il contenuto di cui parlano le notifiche: si segnano lette solo quelle.
+        // idNotifica: quella cliccata. idFilm: la scheda del film (recensioni, loro commenti, nuovi episodi;
+        // non le discussioni, che hanno un posto loro). idDiscussione: la discussione aperta.
+        // idProfilo: il profilo di chi ha iniziato a seguirti. Ritorna quante ne ha segnate.
+        public Task<int> SegnaViste(int idUtente, int? idNotifica, int? idFilm, int? idDiscussione, int? idProfilo) =>
+            _db.Notifiche
+                .Where(n => n.IdDestinatario == idUtente && !n.Letta)
+                .Where(n => (idNotifica != null && n.IdNotifica == idNotifica)
+                    || (idFilm != null && n.IdFilm == idFilm && n.IdDiscussione == null)
+                    || (idDiscussione != null && n.IdDiscussione == idDiscussione)
+                    || (idProfilo != null && n.Tipo == TipiNotifica.NuovoFollower && n.IdMittente == idProfilo))
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.Letta, true));
+
         public Task SegnaTutteLette(int idUtente) =>
             _db.Notifiche
                 .Where(n => n.IdDestinatario == idUtente && !n.Letta)
