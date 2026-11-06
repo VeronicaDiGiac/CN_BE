@@ -58,14 +58,19 @@ namespace CinemaApi.Services
             };
         }
 
-        // Segnare un film come visto lo toglie anche dalla lista "Da vedere"
-        public async Task<VisioneDto> CreateVisione(CreateVisioneDto dto, int idUtente)
+        // Segnare un film come visto lo toglie anche dalla lista "Da vedere".
+        // Un film si segna come visto una volta sola: null se l'utente l'ha già segnato.
+        public async Task<VisioneDto?> CreateVisione(CreateVisioneDto dto, int idUtente)
         {
+            if (await _db.Visioni.AnyAsync(v => v.IdUtente == idUtente && v.IdFilm == dto.IdFilm)) return null;
+
             var visione = new Visione
             {
                 IdUtente = idUtente,
                 IdFilm = dto.IdFilm,
-                DataVisione = dto.SenzaData ? null : dto.DataVisione ?? DateOnly.FromDateTime(DateTime.Now),
+                // La data non si sceglie più: resta quella di oggi, che serve a diario e statistiche
+                DataVisione = DateOnly.FromDateTime(DateTime.Now),
+                // DataVisione = dto.SenzaData ? null : dto.DataVisione ?? DateOnly.FromDateTime(DateTime.Now),
                 DataCreazione = DateTime.Now
             };
 
@@ -87,6 +92,11 @@ namespace CinemaApi.Services
                 DataVisione = visione.DataVisione
             };
         }
+
+        // "Non visto": toglie tutte le visioni dell'utente per quel film (anche i doppioni di prima
+        // che il film si potesse segnare una volta sola). false se non l'aveva segnato
+        public async Task<bool> TogliVisto(int idUtente, int idFilm) =>
+            await _db.Visioni.Where(v => v.IdUtente == idUtente && v.IdFilm == idFilm).ExecuteDeleteAsync() > 0;
 
         public async Task DeleteVisione(Visione visione)
         {
