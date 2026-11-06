@@ -12,6 +12,8 @@ namespace CinemaApi.DTOs.ResponseDto
         public string? Attori { get; set; }
         public string? ImmagineUrl { get; set; }
         public string? Descrizione { get; set; }
+        // true se la trama è in inglese (TMDB non aveva quella italiana): il FE lo segnala
+        public bool TramaInInglese { get; set; }
         public double? VotoMedio { get; set; }
         public int NumeroRecensioni { get; set; }
         public int? TmdbId { get; set; }

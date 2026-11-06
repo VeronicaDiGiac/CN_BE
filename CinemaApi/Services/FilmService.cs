@@ -60,6 +60,7 @@ namespace CinemaApi.Services
                 })
                 .FirstOrDefaultAsync();
 
+            if (film != null) film.TramaInInglese = LinguaTesto.SembraInglese(film.Descrizione);
             return film;
         }
 
