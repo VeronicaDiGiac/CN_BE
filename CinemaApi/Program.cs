@@ -93,7 +93,22 @@ builder.Services.AddHttpClient<TmdbService>(c =>
 {
     c.BaseAddress = new Uri("https://api.themoviedb.org/3/");
     c.Timeout = TimeSpan.FromSeconds(10);
+})
+// TMDB manda le risposte compresse: meno dati da scaricare
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Brotli
 });
+
+// Risposte compresse (brotli/gzip): il JSON pesa 4-5 volte meno, si nota soprattutto su telefono
+builder.Services.AddResponseCompression(o =>
+{
+    o.EnableForHttps = true;
+    o.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    o.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+});
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(o =>
+    o.Level = System.IO.Compression.CompressionLevel.Fastest);
 
 // "Password dimenticata?": massimo 10 richieste ogni 15 minuti per indirizzo IP,
 // così nessuno può usare l'endpoint per riempire di mail la casella di qualcun altro
@@ -228,6 +243,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Compressione per tutto tranne l'accesso (/api/auth): le risposte con il token non si comprimono,
+// per prudenza contro gli attacchi che sfruttano la compressione (BREACH)
+app.UseWhen(c => !c.Request.Path.StartsWithSegments("/api/auth"), ramo => ramo.UseResponseCompression());
 
 app.UseHttpsRedirection();
 

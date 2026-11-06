@@ -91,8 +91,12 @@ namespace CinemaApi.Services
 
             if (regista != null || attore != null)
             {
-                var persRegista = regista == null ? null : await PersonaPerNome(regista, "Directing");
-                var persAttore = attore == null ? null : await PersonaPerNome(attore, "Acting");
+                // Le due persone si cercano in parallelo: TMDB risponde prima
+                var cercaRegista = regista == null ? Task.FromResult<PersonaRicerca?>(null) : PersonaPerNome(regista, "Directing");
+                var cercaAttore = attore == null ? Task.FromResult<PersonaRicerca?>(null) : PersonaPerNome(attore, "Acting");
+                await Task.WhenAll(cercaRegista, cercaAttore);
+                var persRegista = await cercaRegista;
+                var persAttore = await cercaAttore;
                 esito.Regista = persRegista?.Name;
                 esito.Attore = persAttore?.Name;
                 if ((regista != null && persRegista == null) || (attore != null && persAttore == null))
@@ -101,11 +105,15 @@ namespace CinemaApi.Services
                     return esito;
                 }
 
-                List<TmdbRisultatoDto>? titoli = null;
-                if (persRegista != null) titoli = await TitoliPersona(persRegista.Id, true, tipo, anno, genere);
-                if (persAttore != null)
+                // Anche i titoli delle due persone si leggono in parallelo
+                var conRegista = persRegista == null ? null : TitoliPersona(persRegista.Id, true, tipo, anno, genere);
+                var conAttoreTask = persAttore == null ? null : TitoliPersona(persAttore.Id, false, tipo, anno, genere);
+                await Task.WhenAll(new[] { conRegista, conAttoreTask }.Where(t => t != null)!);
+
+                List<TmdbRisultatoDto>? titoli = conRegista == null ? null : await conRegista;
+                if (conAttoreTask != null)
                 {
-                    var conAttore = await TitoliPersona(persAttore.Id, false, tipo, anno, genere);
+                    var conAttore = await conAttoreTask;
                     titoli = titoli == null ? conAttore
                         : titoli.Where(t => conAttore.Any(a => a.TmdbId == t.TmdbId && a.Tipo == t.Tipo)).ToList();
                 }
@@ -133,9 +141,11 @@ namespace CinemaApi.Services
                 filtri.Add((TipiTitolo.Serie, url));
             }
 
-            foreach (var (tipoRisultati, url) in filtri)
+            // Film e serie chiesti a TMDB in parallelo
+            var risposte = await Task.WhenAll(filtri.Select(f => GetInCache<RispostaCrediti>(f.Url, TimeSpan.FromHours(6))));
+            foreach (var ((tipoRisultati, _), trovata) in filtri.Zip(risposte))
             {
-                var risposta = await GetInCache<RispostaCrediti>(url, TimeSpan.FromHours(6)) ?? new RispostaCrediti();
+                var risposta = trovata ?? new RispostaCrediti();
                 esito.Risultati.AddRange(risposta.Results.Select(r => Risultato(r, tipoRisultati)));
                 esito.TotalePagine = Math.Max(esito.TotalePagine, Math.Min(risposta.TotalPages, 500));
                 esito.TotaleRisultati += risposta.TotalResults;

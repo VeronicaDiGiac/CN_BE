@@ -49,6 +49,7 @@ namespace CinemaApi.Controllers
         // Attori e registi che corrispondono al testo, con i loro titoli più noti
         // (la barra di ricerca: "leonardo di caprio" deve trovare i suoi film, non solo i titoli che lo citano)
         [HttpGet("persone")]
+        [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
         [ProducesResponseType(typeof(List<PersonaTmdbDto>), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(429)]
@@ -68,6 +69,7 @@ namespace CinemaApi.Controllers
 
         // Filtri del catalogo su TMDB: regista, attore, anno e genere (dall'elenco di /generi), combinabili
         [HttpGet("scopri")]
+        [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
         [ProducesResponseType(typeof(TmdbScopertaDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(429)]
@@ -92,12 +94,15 @@ namespace CinemaApi.Controllers
 
         // Generi per il filtro del catalogo (validi sia per il catalogo sia per TMDB)
         [HttpGet("generi")]
+        [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
         [ProducesResponseType(typeof(List<GenereDto>), 200)]
         public IActionResult Generi() => Ok(GeneriTmdb.Tutti.Select(g => new GenereDto { Nome = g.Nome }).ToList());
 
         // Elenchi pubblici per il catalogo: alcinema, tendenze, popolari, inarrivo,
         // serie-tendenze, serie-popolari, serie-inonda (Helpers.CategorieTmdb)
         [HttpGet("elenco/{categoria}")]
+        // Il browser la tiene 5 minuti: tornando alla home o al catalogo le strisce compaiono subito
+        [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
         [ProducesResponseType(typeof(TmdbRicercaDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
