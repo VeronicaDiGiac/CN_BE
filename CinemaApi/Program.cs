@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using CinemaApi.Controllers;
 using CinemaApi.Helpers;
+using CinemaApi.Middleware;
 using CinemaApi.Models;
 using CinemaApi.Services;
 using System.Security.Claims;
@@ -211,18 +212,8 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Header di sicurezza su tutte le risposte: niente "indovinare" il tipo di file,
-// niente inserimento dell'API in un iframe di un altro sito
-app.Use(async (context, next) =>
-{
-    var h = context.Response.Headers;
-    h["X-Content-Type-Options"] = "nosniff";
-    h["X-Frame-Options"] = "DENY";
-    h["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    if (!app.Environment.IsDevelopment())
-        h["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; frame-ancestors 'none'";
-    await next();
-});
+// Header di sicurezza su tutte le risposte (Middleware/SecurityHeadersMiddleware.cs)
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 // Film salvati prima della colonna TitoloChiave (Database/FilmTitoloChiave.sql): la si calcola
 // una volta sola. Se è già tutto a posto è una sola query, quindi resta sicuro a ogni avvio.
