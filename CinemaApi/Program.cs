@@ -27,7 +27,7 @@ await app.CompletaChiaviTitoloAsync();
 
 // ---- Pipeline: ogni richiesta passa da qui, in quest'ordine (l'ordine conta) ----
 app.UseProxyEHsts();                              // IP vero dal proxy + HSTS (non in sviluppo)
-app.UseMiddleware<SecurityHeadersMiddleware>();   // header di sicurezza su ogni risposta
+app.UseSecurityHeaders();                         // header di sicurezza su ogni risposta
 app.UseCinemaCors();                              // solo il FE può chiamare l'API dal browser
 app.UseExceptionHandler();                        // dopo CORS: anche i 500 hanno gli header CORS
 app.UseCinemaSwagger();                           // solo in sviluppo

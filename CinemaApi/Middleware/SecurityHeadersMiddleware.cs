@@ -4,7 +4,7 @@ namespace CinemaApi.Middleware
     // niente inserimento dell'API in un iframe di un altro sito.
     // Middleware "a convenzione": il costruttore riceve il prossimo anello della pipeline
     // (RequestDelegate) e InvokeAsync viene chiamato a ogni richiesta.
-    // Si registra in Program.cs con app.UseMiddleware<SecurityHeadersMiddleware>().
+    // Si registra in Program.cs con app.UseSecurityHeaders() (SecurityHeadersMiddlewareExtensions.cs).
     public class SecurityHeadersMiddleware
     {
         private readonly RequestDelegate _next;
