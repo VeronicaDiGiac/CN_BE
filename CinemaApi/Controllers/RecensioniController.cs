@@ -24,6 +24,16 @@ namespace CinemaApi.Controllers
             return Ok(recensioni);
         }
 
+        // Una recensione per la sua pagina (/recensioni/:id nel FE). Pubblica come l'elenco.
+        [HttpGet("{id}")]
+        [ProducesResponseType(typeof(RecensioneDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var recensione = await _recensioniService.GetRecensione(id, User.IdUtenteOpzionale());
+            return recensione == null ? NotFound() : Ok(recensione);
+        }
+
         // PUT perché è idempotente: ripeterlo non aggiunge un secondo "mi piace"
         [HttpPut("{id}/mipiace")]
         [Authorize]

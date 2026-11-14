@@ -25,28 +25,38 @@ namespace CinemaApi.Services
         // Le più apprezzate prima, poi le più recenti.
         public async Task<List<RecensioneDto>> GetRecensioni(int? idFilm, int? idUtente, int? idUtenteAutenticato = null)
         {
-            return await _db.Recensioni
+            var recensioni = _db.Recensioni
                 .Where(r => idFilm == null || r.IdFilm == idFilm)
-                .Where (r => idUtente == null || r.IdUtente == idUtente)
-                .Select(r => new RecensioneDto
-                {
-                    IdRecensione = r.IdRecensione,
-                    IdUtente = r.IdUtente,
-                    IdFilm = r.IdFilm,
-                    UserName = r.Utente != null ? r.Utente.UserName : null,
-                    AutoreAdmin = r.Utente != null && r.Utente.Ruolo == Ruoli.Admin,
-                    TitoloFilm = r.Film != null ? r.Film.Titolo : null,
-                    Voto = r.Voto,
-                    Contenuto = r.Contenuto,
-                    DataRecensione = r.DataRecensione,
-                    Spoiler = r.Spoiler,
-                    NumeroMiPiace = r.MiPiace!.Count(),
-                    MiPiaceUtente = idUtenteAutenticato != null && r.MiPiace!.Any(m => m.IdUtente == idUtenteAutenticato)
-                })
+                .Where(r => idUtente == null || r.IdUtente == idUtente);
+            return await InDto(recensioni, idUtenteAutenticato)
                 .OrderByDescending(r => r.NumeroMiPiace)
                 .ThenByDescending(r => r.DataRecensione)
                 .ToListAsync();
         }
+
+        // Una sola recensione, per la sua pagina (null se non esiste)
+        public Task<RecensioneDto?> GetRecensione(int id, int? idUtenteAutenticato) =>
+            InDto(_db.Recensioni.Where(r => r.IdRecensione == id), idUtenteAutenticato).FirstOrDefaultAsync();
+
+        // Proiezione comune a elenco e singola recensione: EF la traduce in un'unica query SQL
+        private static IQueryable<RecensioneDto> InDto(IQueryable<Recensione> recensioni, int? idUtenteAutenticato) =>
+            recensioni.Select(r => new RecensioneDto
+            {
+                IdRecensione = r.IdRecensione,
+                IdUtente = r.IdUtente,
+                IdFilm = r.IdFilm,
+                UserName = r.Utente != null ? r.Utente.UserName : null,
+                AutoreAdmin = r.Utente != null && r.Utente.Ruolo == Ruoli.Admin,
+                TitoloFilm = r.Film != null ? r.Film.Titolo : null,
+                ImmagineUrlFilm = r.Film != null ? r.Film.ImmagineUrl : null,
+                Voto = r.Voto,
+                Contenuto = r.Contenuto,
+                DataRecensione = r.DataRecensione,
+                Spoiler = r.Spoiler,
+                NumeroMiPiace = r.MiPiace!.Count(),
+                MiPiaceUtente = idUtenteAutenticato != null && r.MiPiace!.Any(m => m.IdUtente == idUtenteAutenticato),
+                NumeroCommenti = r.Commenti!.Count()
+            });
 
         // Idempotente: un secondo "mi piace" non cambia niente (e non manda un'altra notifica)
         public async Task MettiMiPiace(Recensione recensione, int idUtente)

@@ -9,6 +9,8 @@ namespace CinemaApi.DTOs.RequestDto
         // true se l'autore è un amministratore: il FE mostra l'etichetta "Admin" accanto al nome
         public bool AutoreAdmin { get; set; }
         public string? TitoloFilm { get; set; }
+        // Locandina del film: la mostra la pagina della singola recensione
+        public string? ImmagineUrlFilm { get; set; }
         public int? Voto { get; set; }
         public string? Contenuto { get; set; }
         public DateTime? DataRecensione { get; set; }
@@ -17,5 +19,6 @@ namespace CinemaApi.DTOs.RequestDto
         public int NumeroMiPiace { get; set; }
         // true se l'utente autenticato ha messo "mi piace" (sempre false per chi non è loggato)
         public bool MiPiaceUtente { get; set; }
+        public int NumeroCommenti { get; set; }
     }
 }
