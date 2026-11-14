@@ -24,4 +24,12 @@ namespace CinemaApi.DTOs.ResponseDto
         public string? ImmagineUrl { get; set; }
         public DateTime DataAggiunta { get; set; }
     }
+
+    // Stato dei film per l'utente autenticato: solo gli id, per segnare "Visto" e "Da vedere"
+    // sulle copertine del catalogo con una sola richiesta
+    public class StatoFilmUtenteDto
+    {
+        public List<int> Visti { get; set; } = new();
+        public List<int> DaVedere { get; set; } = new();
+    }
 }

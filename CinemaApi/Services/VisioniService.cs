@@ -18,6 +18,14 @@ namespace CinemaApi.Services
         // Le serie non si segnano come viste per intero: si segnano gli episodi
         public Task<bool> ESerie(int idFilm) => _db.Film.AnyAsync(f => f.IdFilm == idFilm && f.Tipo == TipiTitolo.Serie);
 
+        // Id dei film visti e di quelli "Da vedere" dell'utente (per le copertine del catalogo).
+        // Distinct sui visti: prima del vincolo "una volta sola" potevano esserci doppioni.
+        public async Task<StatoFilmUtenteDto> GetStato(int idUtente) => new()
+        {
+            Visti = await _db.Visioni.Where(v => v.IdUtente == idUtente).Select(v => v.IdFilm).Distinct().ToListAsync(),
+            DaVedere = await _db.DaVedere.Where(d => d.IdUtente == idUtente).Select(d => d.IdFilm).ToListAsync()
+        };
+
         public Task<Visione?> GetVisioneById(int id) => _db.Visioni.FindAsync(id).AsTask();
 
         // Diario di un utente, dalla visione più recente; quelle senza data in fondo (in SQL Server

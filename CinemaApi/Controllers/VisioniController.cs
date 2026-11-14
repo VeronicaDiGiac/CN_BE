@@ -27,6 +27,15 @@ namespace CinemaApi.Controllers
             return Ok(await _visioniService.GetDiario(idUtente, pageNumber, pageSize));
         }
 
+        // Id dei film visti e "Da vedere" dell'utente autenticato: il catalogo li usa
+        // per mostrare i due flag sulle copertine senza una richiesta per film
+        [HttpGet("stato")]
+        [Authorize]
+        [ProducesResponseType(typeof(StatoFilmUtenteDto), 200)]
+        [ProducesResponseType(401)]
+        public async Task<IActionResult> GetStato() =>
+            Ok(await _visioniService.GetStato(User.IdUtente()));
+
         // Segna il film come visto: una volta sola per utente (409 se lo è già)
         [HttpPost]
         [Authorize]
