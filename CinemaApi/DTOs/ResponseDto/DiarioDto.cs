@@ -26,10 +26,20 @@ namespace CinemaApi.DTOs.ResponseDto
     }
 
     // Stato dei film per l'utente autenticato: solo gli id, per segnare "Visto" e "Da vedere"
-    // sulle copertine del catalogo con una sola richiesta
+    // su tutte le copertine (catalogo e TMDB) con una sola richiesta
     public class StatoFilmUtenteDto
     {
         public List<int> Visti { get; set; } = new();
         public List<int> DaVedere { get; set; } = new();
+        // Id TMDB dei film qui sopra: le copertine TMDB si riconoscono anche quando l'elenco TMDB
+        // arriva da una cache di prima dell'importazione e non ha ancora l'idFilm
+        public List<TitoloTmdbDto> Tmdb { get; set; } = new();
+    }
+
+    public class TitoloTmdbDto
+    {
+        public int IdFilm { get; set; }
+        public int TmdbId { get; set; }
+        public string Tipo { get; set; } = "Film";
     }
 }

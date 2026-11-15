@@ -20,11 +20,17 @@ namespace CinemaApi.Services
 
         // Id dei film visti e di quelli "Da vedere" dell'utente (per le copertine del catalogo).
         // Distinct sui visti: prima del vincolo "una volta sola" potevano esserci doppioni.
-        public async Task<StatoFilmUtenteDto> GetStato(int idUtente) => new()
+        public async Task<StatoFilmUtenteDto> GetStato(int idUtente)
         {
-            Visti = await _db.Visioni.Where(v => v.IdUtente == idUtente).Select(v => v.IdFilm).Distinct().ToListAsync(),
-            DaVedere = await _db.DaVedere.Where(d => d.IdUtente == idUtente).Select(d => d.IdFilm).ToListAsync()
-        };
+            var visti = await _db.Visioni.Where(v => v.IdUtente == idUtente).Select(v => v.IdFilm).Distinct().ToListAsync();
+            var daVedere = await _db.DaVedere.Where(d => d.IdUtente == idUtente).Select(d => d.IdFilm).ToListAsync();
+            var segnati = visti.Union(daVedere).ToList();
+            var tmdb = await _db.Film
+                .Where(f => segnati.Contains(f.IdFilm) && f.TmdbId != null)
+                .Select(f => new TitoloTmdbDto { IdFilm = f.IdFilm, TmdbId = f.TmdbId!.Value, Tipo = f.Tipo })
+                .ToListAsync();
+            return new StatoFilmUtenteDto { Visti = visti, DaVedere = daVedere, Tmdb = tmdb };
+        }
 
         public Task<Visione?> GetVisioneById(int id) => _db.Visioni.FindAsync(id).AsTask();
 
