@@ -47,6 +47,28 @@ namespace CinemaApi.Controllers
             return avanzamento == null ? NotFound("Serie non trovata") : Ok(avanzamento);
         }
 
+        // Avvisi delle nuove puntate per l'utente autenticato: { avvisi: true/false }
+        [HttpGet("serie/{idFilm}/avvisi")]
+        [Authorize]
+        [ProducesResponseType(typeof(AvvisiSerieDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Avvisi(int idFilm)
+        {
+            var avvisi = await _calendario.Avvisi(User.IdUtente(), idFilm);
+            return avvisi == null ? NotFound("Serie non trovata") : Ok(new AvvisiSerieDto { Avvisi = avvisi.Value });
+        }
+
+        // "Segui la serie": attiva o spegne gli avvisi delle nuove puntate. PUT perché è idempotente
+        [HttpPut("serie/{idFilm}/avvisi")]
+        [Authorize]
+        [ProducesResponseType(typeof(AvvisiSerieDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> ImpostaAvvisi(int idFilm, [FromBody] AvvisiSerieDto dto)
+        {
+            if (!await _calendario.ImpostaAvvisi(User.IdUtente(), idFilm, dto.Avvisi)) return NotFound("Serie non trovata");
+            return Ok(dto);
+        }
+
         // Serie iniziate da un utente (pubblico, come il diario)
         [HttpGet("utente/{idUtente}")]
         [ProducesResponseType(typeof(List<SerieUtenteDto>), 200)]

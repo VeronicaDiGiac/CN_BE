@@ -199,6 +199,7 @@ namespace CinemaApi.Services
             await _db.Preferiti.Where(p => p.IdFilm == id).ExecuteDeleteAsync();
             await _db.Visioni.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.EpisodiVisti.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
+            await _db.SerieSeguite.Where(s => s.IdFilm == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdFilm == id).ExecuteDeleteAsync();
             await _db.Segnalazioni.Where(s => s.TipoContenuto == TipiContenuto.Film && s.IdContenuto == id).ExecuteDeleteAsync();
@@ -288,6 +289,13 @@ namespace CinemaApi.Services
                 .ExecuteDeleteAsync();
             await _db.EpisodiVisti.Where(v => v.IdFilm == idDaEliminare)
                 .ExecuteUpdateAsync(s => s.SetProperty(v => v.IdFilm, idDaTenere));
+
+            // Avvisi delle nuove puntate: vale la scelta già fatta sulla scheda tenuta.
+            // IdFilm fa parte della chiave: si sposta con SQL diretto
+            var avvisiSulTenuto = _db.SerieSeguite.Where(s => s.IdFilm == idDaTenere).Select(s => s.IdUtente);
+            await _db.SerieSeguite.Where(s => s.IdFilm == idDaEliminare && avvisiSulTenuto.Contains(s.IdUtente)).ExecuteDeleteAsync();
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE dbo.SerieSeguite SET IdFilm = {idDaTenere} WHERE IdFilm = {idDaEliminare}");
 
             // Segnalazioni sulla scheda eliminata: passano a quella tenuta
             await _db.Segnalazioni.Where(s => s.TipoContenuto == TipiContenuto.Film && s.IdContenuto == idDaEliminare)

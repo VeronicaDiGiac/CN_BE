@@ -2,6 +2,7 @@ using CinemaApi.DTOs.ResponseDto;
 using CinemaApi.Helpers;
 using CinemaApi.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace CinemaApi.Services
 {
@@ -15,14 +16,87 @@ namespace CinemaApi.Services
         // Un episodio uscito da più di così non è più "nuovo": non si notifica
         public const int GiorniNovitaEpisodio = 3;
 
+        // Controllo dei nuovi episodi per un singolo utente (quando usa l'app): al massimo ogni 3 ore
+        private static readonly TimeSpan IntervalloControlloUtente = TimeSpan.FromHours(3);
+
         private readonly CinemaContext _db;
         private readonly TmdbService _tmdb;
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<CalendarioSerieService> _logger;
 
-        public CalendarioSerieService(CinemaContext db, TmdbService tmdb)
+        public CalendarioSerieService(CinemaContext db, TmdbService tmdb, IMemoryCache cache, ILogger<CalendarioSerieService> logger)
         {
             _db = db;
             _tmdb = tmdb;
+            _cache = cache;
+            _logger = logger;
         }
+
+        // ---- Avvisi delle nuove puntate ("Segui la serie") ----
+
+        // true se l'utente riceve gli avvisi: la sua scelta, se l'ha fatta, altrimenti se ha visto
+        // almeno un episodio. null se il film non è una serie del catalogo
+        public async Task<bool?> Avvisi(int idUtente, int idFilm)
+        {
+            if (!await SerieValida(idFilm)) return null;
+            var scelta = await _db.SerieSeguite
+                .Where(s => s.IdUtente == idUtente && s.IdFilm == idFilm)
+                .Select(s => (bool?)s.Avvisi)
+                .FirstOrDefaultAsync();
+            return scelta ?? await _db.EpisodiVisti.AnyAsync(v => v.IdUtente == idUtente && v.IdFilm == idFilm);
+        }
+
+        // Salva la scelta (attiva o disattiva gli avvisi). false se il film non è una serie del catalogo.
+        // Attivandoli si controlla subito se c'è un episodio appena uscito.
+        public async Task<bool> ImpostaAvvisi(int idUtente, int idFilm, bool avvisi)
+        {
+            if (!await SerieValida(idFilm)) return false;
+            var riga = await _db.SerieSeguite.FindAsync(idUtente, idFilm);
+            if (riga == null)
+                _db.SerieSeguite.Add(new SerieSeguita { IdUtente = idUtente, IdFilm = idFilm, Avvisi = avvisi, DataModifica = DateTime.Now });
+            else
+            {
+                riga.Avvisi = avvisi;
+                riga.DataModifica = DateTime.Now;
+            }
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Due richieste contemporanee: la chiave primaria ha già tenuto una sola riga
+                _db.ChangeTracker.Clear();
+            }
+
+            if (avvisi)
+            {
+                try { await NotificaNuoviEpisodi(idUtente); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Controllo dei nuovi episodi dopo \"Segui la serie\" non riuscito"); }
+            }
+            return true;
+        }
+
+        // Online l'app può restare spenta per ore (IIS la ferma quando nessuno la usa) e con lei il
+        // controllo periodico di NuoviEpisodiWorker: per questo il controllo parte anche quando
+        // l'utente usa l'app (campanella). Al massimo ogni 3 ore per utente; un errore non blocca niente.
+        public async Task ControllaSeServe(int idUtente)
+        {
+            var chiave = $"nuovi-episodi-{idUtente}";
+            if (_cache.TryGetValue(chiave, out _)) return;
+            _cache.Set(chiave, true, IntervalloControlloUtente);
+            try
+            {
+                await NotificaNuoviEpisodi(idUtente);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Controllo dei nuovi episodi per l'utente {IdUtente} non riuscito", idUtente);
+            }
+        }
+
+        private Task<bool> SerieValida(int idFilm) =>
+            _db.Film.AnyAsync(f => f.IdFilm == idFilm && f.Tipo == TipiTitolo.Serie && f.Stato == StatiFilm.Approvato);
 
         // Serie seguite = iniziate (almeno un episodio visto) oppure nella lista "Da vedere"
         public async Task<List<PuntataCalendarioDto>> Calendario(int idUtente)
@@ -65,15 +139,22 @@ namespace CinemaApi.Services
             return puntate.OrderBy(p => p.DataUscita).ThenBy(p => p.Titolo).ThenBy(p => p.Stagione).ThenBy(p => p.Episodio).ToList();
         }
 
-        // Crea la notifica "nuovo episodio" per gli episodi usciti negli ultimi giorni, a chi sta
-        // guardando la serie (almeno un episodio visto) e non l'ha già visto. Idempotente: ogni
-        // episodio si notifica una volta sola per utente. Restituisce quante notifiche ha creato.
-        public async Task<int> NotificaNuoviEpisodi()
+        // Crea la notifica "nuovo episodio" per gli episodi usciti negli ultimi giorni, a chi la vuole
+        // e non l'ha già visto. La vuole chi ha visto almeno un episodio (se non ha spento gli avvisi)
+        // e chi segue la serie con "Segui la serie". Idempotente: ogni episodio si notifica una volta
+        // sola per utente. soloUtente: controllo per un utente solo. Restituisce quante notifiche ha creato.
+        public async Task<int> NotificaNuoviEpisodi(int? soloUtente = null)
         {
-            var spettatori = await _db.EpisodiVisti
-                .Where(v => v.Film!.Tipo == TipiTitolo.Serie && v.Film.Stato == StatiFilm.Approvato && v.Film.TmdbId != null)
-                .Select(v => new { v.IdFilm, v.IdUtente, v.Film!.TmdbId })
-                .Distinct()
+            var dagliEpisodi = _db.EpisodiVisti
+                .Where(v => soloUtente == null || v.IdUtente == soloUtente)
+                .Where(v => !_db.SerieSeguite.Any(s => s.IdUtente == v.IdUtente && s.IdFilm == v.IdFilm && !s.Avvisi))
+                .Select(v => new { v.IdFilm, v.IdUtente });
+            var seguite = _db.SerieSeguite
+                .Where(s => s.Avvisi && (soloUtente == null || s.IdUtente == soloUtente))
+                .Select(s => new { s.IdFilm, s.IdUtente });
+            var spettatori = await dagliEpisodi.Union(seguite)
+                .Join(_db.Film.Where(f => f.Tipo == TipiTitolo.Serie && f.Stato == StatiFilm.Approvato && f.TmdbId != null),
+                      c => c.IdFilm, f => f.IdFilm, (c, f) => new { c.IdFilm, c.IdUtente, f.TmdbId })
                 .ToListAsync();
             if (spettatori.Count == 0) return 0;
 
@@ -122,7 +203,18 @@ namespace CinemaApi.Services
                 }
             }
 
-            if (create > 0) await _db.SaveChangesAsync();
+            if (create == 0) return 0;
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Un altro controllo (periodico o di un altro utente) ha appena creato le stesse notifiche:
+                // l'indice UNIQUE ha evitato i doppioni, al prossimo giro non ci sarà niente da fare
+                _db.ChangeTracker.Clear();
+                return 0;
+            }
             return create;
         }
 

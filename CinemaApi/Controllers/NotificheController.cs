@@ -15,7 +15,13 @@ namespace CinemaApi.Controllers
         private const int PageSizeMassimo = 50;
 
         private readonly NotificheService _notificheService;
-        public NotificheController(NotificheService notificheService) { _notificheService = notificheService; }
+        private readonly CalendarioSerieService _calendario;
+
+        public NotificheController(NotificheService notificheService, CalendarioSerieService calendario)
+        {
+            _notificheService = notificheService;
+            _calendario = calendario;
+        }
 
         [HttpGet]
         [ProducesResponseType(typeof(PagedResultDto<NotificaDto>), 200)]
@@ -27,11 +33,15 @@ namespace CinemaApi.Controllers
             return Ok(await _notificheService.GetNotifiche(User.IdUtente(), pageNumber, pageSize));
         }
 
-        // Chiamato spesso dal FE (campanella): risposta minima
+        // Chiamato spesso dal FE (campanella): risposta minima. Ogni 3 ore al massimo controlla anche
+        // le nuove puntate delle serie dell'utente (online il controllo periodico può essere fermo)
         [HttpGet("non-lette")]
         [ProducesResponseType(typeof(int), 200)]
-        public async Task<IActionResult> ContaNonLette() =>
-            Ok(await _notificheService.ContaNonLette(User.IdUtente()));
+        public async Task<IActionResult> ContaNonLette()
+        {
+            await _calendario.ControllaSeServe(User.IdUtente());
+            return Ok(await _notificheService.ContaNonLette(User.IdUtente()));
+        }
 
         // Segna lette le notifiche di ciò che l'utente ha appena visto (almeno uno dei parametri):
         // la notifica cliccata, la scheda di un film, una discussione o il profilo di un nuovo follower

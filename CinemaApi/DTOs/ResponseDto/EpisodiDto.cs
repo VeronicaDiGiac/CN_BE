@@ -1,5 +1,11 @@
 namespace CinemaApi.DTOs.ResponseDto
 {
+    // Avvisi delle nuove puntate di una serie per l'utente ("Segui la serie")
+    public class AvvisiSerieDto
+    {
+        public bool Avvisi { get; set; }
+    }
+
     // Avanzamento di un utente in una serie (scheda della serie)
     public class AvanzamentoSerieDto
     {

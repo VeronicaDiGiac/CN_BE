@@ -64,6 +64,8 @@ namespace CinemaApi.Models
 
         public DbSet<Salvato> Salvati { get; set; }
 
+        public DbSet<SerieSeguita> SerieSeguite { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -81,6 +83,9 @@ namespace CinemaApi.Models
 
             modelBuilder.Entity<Salvato>()
                 .HasKey(s => new { s.IdUtente, s.TipoContenuto, s.IdContenuto });
+
+            modelBuilder.Entity<SerieSeguita>()
+                .HasKey(s => new { s.IdUtente, s.IdFilm });
 
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)
