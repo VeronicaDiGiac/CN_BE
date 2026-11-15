@@ -56,6 +56,62 @@ namespace CinemaApi.DTOs.ResponseDto
         public List<TmdbRisultatoDto> Titoli { get; set; } = new();
     }
 
+    // Cast e troupe di un film o di una serie del catalogo (da TMDB). Vuoti se non è collegato a TMDB.
+    public class CreditiDto
+    {
+        // Ruoli principali in ordine fisso: Regia, Ideazione, Sceneggiatura, Soggetto, Fotografia, Musiche, Montaggio
+        public List<RuoloTroupeDto> Troupe { get; set; } = new();
+        // Gli attori principali, in ordine di importanza
+        public List<AttoreDto> Cast { get; set; } = new();
+    }
+
+    public class RuoloTroupeDto
+    {
+        public string Ruolo { get; set; } = "";
+        public List<PersonaBreveDto> Persone { get; set; } = new();
+    }
+
+    public class PersonaBreveDto
+    {
+        // Id della persona su TMDB: apre la sua pagina (/api/tmdb/persone/{tmdbId})
+        public int TmdbId { get; set; }
+        public string Nome { get; set; } = "";
+    }
+
+    public class AttoreDto
+    {
+        public int TmdbId { get; set; }
+        public string Nome { get; set; } = "";
+        public string? Personaggio { get; set; }
+        public string? FotoUrl { get; set; }
+    }
+
+    // Pagina di una persona (attore, regista, sceneggiatore…) con tutti i suoi titoli
+    public class PersonaDettaglioDto
+    {
+        public int TmdbId { get; set; }
+        public string Nome { get; set; } = "";
+        public string? FotoUrl { get; set; }
+        public string? Biografia { get; set; }
+        // Su TMDB manca la biografia in italiano: è quella inglese
+        public bool BiografiaInInglese { get; set; }
+        // 'YYYY-MM-DD'
+        public string? DataNascita { get; set; }
+        public string? DataMorte { get; set; }
+        public string? LuogoNascita { get; set; }
+        // Per cosa è conosciuta: "Recitazione", "Regia", "Sceneggiatura"…
+        public string? NotaPer { get; set; }
+        // Titoli in cui recita (Ruolo = personaggio) e titoli a cui ha lavorato (Ruolo = "Regia, Sceneggiatura"…),
+        // i più popolari prima
+        public List<TitoloPersonaDto> Recitazione { get; set; } = new();
+        public List<TitoloPersonaDto> Troupe { get; set; } = new();
+    }
+
+    public class TitoloPersonaDto : TmdbRisultatoDto
+    {
+        public string? Ruolo { get; set; }
+    }
+
     // Risultati dei filtri del catalogo su TMDB (regista, attore, anno, genere)
     public class TmdbScopertaDto
     {

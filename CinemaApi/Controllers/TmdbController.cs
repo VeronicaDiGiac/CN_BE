@@ -136,6 +136,35 @@ namespace CinemaApi.Controllers
             return Ok(extra);
         }
 
+        // Cast e troupe (regia, sceneggiatura, fotografia…) di un film o di una serie del catalogo,
+        // con l'id TMDB di ogni persona per aprire la sua pagina. Vuoti se non è collegato a TMDB.
+        [HttpGet("film/{idFilm}/crediti")]
+        [ProducesResponseType(typeof(CreditiDto), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(429)]
+        public async Task<IActionResult> Crediti(int idFilm)
+        {
+            var film = await _filmService.GetFilmById(idFilm);
+            if (film == null || film.Stato != StatiFilm.Approvato) return NotFound();
+            if (film.TmdbId == null) return Ok(new CreditiDto());
+            return Ok(await _tmdbService.CreditiTitoloTmdb(film.TmdbId.Value, film.Tipo) ?? new CreditiDto());
+        }
+
+        // Pagina di una persona: foto, biografia e tutti i titoli in cui recita o a cui ha lavorato.
+        // Per i titoli già nel catalogo c'è anche IdFilm.
+        [HttpGet("persone/{tmdbId:int}")]
+        [ProducesResponseType(typeof(PersonaDettaglioDto), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(429)]
+        public async Task<IActionResult> Persona(int tmdbId)
+        {
+            if (tmdbId < 1) return NotFound();
+            var persona = await _tmdbService.DettaglioPersona(tmdbId);
+            if (persona == null) return NotFound("Persona non trovata su TMDB");
+            await SegnaGiaNelCatalogo(new TmdbRicercaDto { Risultati = persona.Recitazione.Concat(persona.Troupe).Cast<TmdbRisultatoDto>().ToList() });
+            return Ok(persona);
+        }
+
         // Stagioni di una serie del catalogo
         [HttpGet("serie/{idFilm}/stagioni")]
         [ProducesResponseType(typeof(List<StagioneDto>), 200)]

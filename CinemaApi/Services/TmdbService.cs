@@ -382,6 +382,186 @@ namespace CinemaApi.Services
             return risultato;
         }
 
+        // ---- Crediti e persone ----
+
+        // Ruoli della troupe che mostriamo, nell'ordine della scheda; i "job" di TMDB che ci finiscono dentro
+        private static readonly (string Ruolo, string[] Lavori)[] RuoliTroupe =
+        {
+            ("Regia", new[] { "Director" }),
+            ("Ideazione", new[] { "Creator" }),
+            ("Sceneggiatura", new[] { "Screenplay", "Writer", "Teleplay" }),
+            ("Soggetto", new[] { "Story", "Novel", "Original Story", "Author" }),
+            ("Fotografia", new[] { "Director of Photography" }),
+            ("Musiche", new[] { "Original Music Composer", "Music" }),
+            ("Montaggio", new[] { "Editor" }),
+        };
+        private const int PersonePerRuolo = 4;
+        private const int AttoriNellaScheda = 20;
+
+        private static string? RuoloDi(string? lavoro) =>
+            lavoro == null ? null : RuoliTroupe.FirstOrDefault(r => r.Lavori.Contains(lavoro)).Ruolo;
+
+        // Cast e troupe principali di un film o di una serie; null se TMDB non lo conosce
+        public async Task<CreditiDto?> CreditiTitoloTmdb(int tmdbId, string tipo)
+        {
+            var serie = tipo == TipiTitolo.Serie;
+            var crediti = await GetInCache<CreditiTitolo>(
+                serie ? $"tv/{tmdbId}/aggregate_credits?language={Lingua}" : $"movie/{tmdbId}/credits?language={Lingua}",
+                TimeSpan.FromHours(12));
+            if (crediti == null) return null;
+
+            // Ogni persona con i suoi ruoli; nelle serie conta in quanti episodi ha fatto quel lavoro
+            var lavori = crediti.Crew.SelectMany(c => (serie ? c.Jobs.Select(j => (j.Job, j.EpisodeCount)) : Enumerable.Repeat((c.Job, 1), 1))
+                    .Select(j => new { c.Id, c.Name, Ruolo = RuoloDi(j.Item1), Episodi = j.Item2 }))
+                .Where(l => l.Ruolo != null && !string.IsNullOrWhiteSpace(l.Name))
+                .ToList();
+            // Nelle serie gli ideatori non sono nei crediti aggregati: stanno nella serie
+            if (serie && (await GetSerie(tmdbId)) is { } datiSerie)
+                lavori.InsertRange(0, datiSerie.CreatedBy.Where(c => !string.IsNullOrWhiteSpace(c.Name))
+                    .Select(c => new { c.Id, c.Name, Ruolo = (string?)"Ideazione", Episodi = int.MaxValue }));
+
+            var troupe = RuoliTroupe
+                .Select(r => new RuoloTroupeDto
+                {
+                    Ruolo = r.Ruolo,
+                    Persone = lavori.Where(l => l.Ruolo == r.Ruolo)
+                        .GroupBy(l => l.Id)
+                        .OrderByDescending(g => g.Sum(l => (long)l.Episodi))
+                        .Take(PersonePerRuolo)
+                        .Select(g => new PersonaBreveDto { TmdbId = g.Key, Nome = g.First().Name! })
+                        .ToList()
+                })
+                .Where(r => r.Persone.Count > 0)
+                .ToList();
+
+            var cast = crediti.Cast
+                .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+                .OrderBy(c => c.Order)
+                .GroupBy(c => c.Id).Select(g => g.First())
+                .Take(AttoriNellaScheda)
+                .Select(c => new AttoreDto
+                {
+                    TmdbId = c.Id,
+                    Nome = c.Name!,
+                    Personaggio = Vuoto(serie ? c.Roles.OrderByDescending(r => r.EpisodeCount).FirstOrDefault()?.Character : c.Character),
+                    FotoUrl = Immagine(c.ProfilePath, "w185")
+                })
+                .ToList();
+
+            return new CreditiDto { Troupe = troupe, Cast = cast };
+        }
+
+        // Per cosa è conosciuta una persona (known_for_department di TMDB)
+        private static string? NotaPer(string? dipartimento) => dipartimento switch
+        {
+            "Acting" => "Recitazione",
+            "Directing" => "Regia",
+            "Writing" => "Sceneggiatura",
+            "Camera" => "Fotografia",
+            "Sound" => "Musiche",
+            "Editing" => "Montaggio",
+            "Production" => "Produzione",
+            _ => null
+        };
+
+        // Pagina di una persona con i titoli in cui recita e quelli a cui ha lavorato; null se non esiste
+        public async Task<PersonaDettaglioDto?> DettaglioPersona(int tmdbId)
+        {
+            var p = await GetInCache<RispostaPersona>(
+                $"person/{tmdbId}?language={Lingua}&append_to_response=combined_credits", TimeSpan.FromHours(12));
+            if (p == null) return null;
+
+            var biografia = Vuoto(p.Biography);
+            var inInglese = false;
+            if (biografia == null)
+            {
+                biografia = Vuoto((await GetInCache<RispostaPersona>($"person/{tmdbId}?language=en-US", TimeSpan.FromHours(12)))?.Biography);
+                inInglese = biografia != null;
+            }
+
+            var crediti = p.CombinedCredits ?? new CreditiPersona();
+            // Talk show e notiziari: ci si compare come ospiti, non sono "suoi" titoli
+            bool Valido(CreditoPersona c) => c.MediaType is "movie" or "tv"
+                && !c.GenreIds.Contains(GenereTalk) && !c.GenreIds.Contains(GenereNotizie);
+
+            // Le apparizioni "nel ruolo di sé stesso" (documentari, programmi) non sono ruoli da attore
+            var recitazione = crediti.Cast.Where(Valido).Where(c => !SeStesso(c.Character))
+                .GroupBy(c => (c.MediaType, c.Id))
+                .Select(g => TitoloPersona(g.First(), Personaggio(g), g.Max(c => c.EpisodeCount)))
+                .OrderByDescending(t => t.Popolarita)
+                .ToList();
+
+            var troupe = crediti.Crew.Where(Valido)
+                .Select(c => new { Credito = c, Ruolo = RuoloDi(c.Job) })
+                .Where(x => x.Ruolo != null)
+                .GroupBy(x => (x.Credito.MediaType, x.Credito.Id))
+                .Select(g => TitoloPersona(g.First().Credito, string.Join(", ",
+                    RuoliTroupe.Select(r => r.Ruolo).Where(r => g.Any(x => x.Ruolo == r))), g.Max(x => x.Credito.EpisodeCount)))
+                .OrderByDescending(t => t.Popolarita)
+                .ToList();
+
+            return new PersonaDettaglioDto
+            {
+                TmdbId = p.Id,
+                Nome = p.Name ?? "",
+                FotoUrl = Immagine(p.ProfilePath, "h632"),
+                Biografia = biografia,
+                BiografiaInInglese = inInglese,
+                DataNascita = Vuoto(p.Birthday),
+                DataMorte = Vuoto(p.Deathday),
+                LuogoNascita = Vuoto(p.PlaceOfBirth),
+                NotaPer = NotaPer(p.KnownForDepartment),
+                Recitazione = recitazione,
+                Troupe = troupe
+            };
+        }
+
+        // Fino a quanti episodi una serie è una "partecipazione" e non un ruolo suo
+        private const int EpisodiPartecipazione = 2;
+
+        // Personaggi interpretati in un titolo, più "N episodi" per le apparizioni brevi in una serie
+        private static string? Personaggio(IEnumerable<CreditoPersona> crediti)
+        {
+            var nomi = Vuoto(string.Join(" / ", crediti.Select(c => Vuoto(c.Character)).Where(x => x != null).Distinct()));
+            var episodi = crediti.Max(c => c.EpisodeCount);
+            if (crediti.First().MediaType != "tv" || episodi is not (> 0 and <= EpisodiPartecipazione)) return nomi;
+            var quanti = episodi == 1 ? "1 episodio" : $"{episodi} episodi";
+            return nomi == null ? quanti : $"{nomi} ({quanti})";
+        }
+
+        // episodi: per le serie, in quanti episodi compare. Le partecipazioni brevi scendono in fondo
+        // all'ordine per popolarità: una serie famosa con un'apparizione non deve passare davanti ai suoi film
+        private static TitoloPersonaDto TitoloPersona(CreditoPersona c, string? ruolo, int? episodi = null)
+        {
+            var tipo = c.MediaType == "tv" ? TipiTitolo.Serie : TipiTitolo.Film;
+            var data = Vuoto(c.ReleaseDate ?? c.FirstAirDate);
+            var partecipazione = tipo == TipiTitolo.Serie && episodi is > 0 and <= EpisodiPartecipazione;
+            return new TitoloPersonaDto
+            {
+                TmdbId = c.Id,
+                Tipo = tipo,
+                Titolo = c.Title ?? c.Name ?? c.OriginalTitle ?? c.OriginalName ?? "",
+                TitoloOriginale = c.OriginalTitle ?? c.OriginalName,
+                AnnoUscita = Anno(data),
+                DataUscita = data,
+                LocandinaUrl = Immagine(c.PosterPath, "w342"),
+                Descrizione = c.Overview,
+                Popolarita = partecipazione ? c.Popularity / 20 : c.Popularity,
+                Ruolo = ruolo
+            };
+        }
+
+        private static readonly string[] PersonaggiSeStesso = { "self", "himself", "herself", "themselves", "themself" };
+
+        // "Self", "Himself - Host", "Self (archive footage)"…
+        private static bool SeStesso(string? personaggio)
+        {
+            var p = (personaggio ?? "").Trim().ToLowerInvariant();
+            return PersonaggiSeStesso.Any(s => p == s || p.StartsWith(s + " ") || p.StartsWith(s + "(") || p.StartsWith(s + ","));
+        }
+
+        private static string? Vuoto(string? testo) => string.IsNullOrWhiteSpace(testo) ? null : testo.Trim();
+
         // ---- Serie TV ----
 
         // Dati di una serie convertiti nei campi del catalogo; null se non esiste su TMDB.
@@ -559,6 +739,56 @@ namespace CinemaApi.Services
             public string? Overview { get; set; }
         }
 
+        // movie/{id}/credits e tv/{id}/aggregate_credits (nelle serie i ruoli sono per episodi)
+        private class CreditiTitolo
+        {
+            public List<MembroCast> Cast { get; set; } = new();
+            public List<MembroTroupe> Crew { get; set; } = new();
+        }
+
+        private class MembroCast
+        {
+            public int Id { get; set; }
+            public string? Name { get; set; }
+            public string? Character { get; set; }
+            public string? ProfilePath { get; set; }
+            public int Order { get; set; }
+            public List<RuoloEpisodi> Roles { get; set; } = new();
+        }
+
+        private class RuoloEpisodi
+        {
+            public string? Character { get; set; }
+            public int EpisodeCount { get; set; }
+        }
+
+        private class MembroTroupe
+        {
+            public int Id { get; set; }
+            public string? Name { get; set; }
+            public string? Job { get; set; }
+            public List<LavoroEpisodi> Jobs { get; set; } = new();
+        }
+
+        private class LavoroEpisodi
+        {
+            public string? Job { get; set; }
+            public int EpisodeCount { get; set; }
+        }
+
+        private class RispostaPersona
+        {
+            public int Id { get; set; }
+            public string? Name { get; set; }
+            public string? Biography { get; set; }
+            public string? Birthday { get; set; }
+            public string? Deathday { get; set; }
+            public string? PlaceOfBirth { get; set; }
+            public string? ProfilePath { get; set; }
+            public string? KnownForDepartment { get; set; }
+            public CreditiPersona? CombinedCredits { get; set; }
+        }
+
         private class RispostaMulti
         {
             public List<RisultatoMulti> Results { get; set; } = new();
@@ -601,6 +831,10 @@ namespace CinemaApi.Services
             // "movie" o "tv"
             public string? MediaType { get; set; }
             public string? Job { get; set; }
+            // Personaggio interpretato (solo cast)
+            public string? Character { get; set; }
+            // Solo serie: in quanti episodi compare (o ha fatto quel lavoro)
+            public int? EpisodeCount { get; set; }
             public double Popularity { get; set; }
             public List<int> GenreIds { get; set; } = new();
         }
@@ -706,6 +940,7 @@ namespace CinemaApi.Services
 
         private class Persona
         {
+            public int Id { get; set; }
             public string? Name { get; set; }
             public string? Job { get; set; }
             public int Order { get; set; }
