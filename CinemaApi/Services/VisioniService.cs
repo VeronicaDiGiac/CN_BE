@@ -82,9 +82,8 @@ namespace CinemaApi.Services
             {
                 IdUtente = idUtente,
                 IdFilm = dto.IdFilm,
-                // La data non si sceglie più: resta quella di oggi, che serve a diario e statistiche
-                DataVisione = DateOnly.FromDateTime(DateTime.Now),
-                // DataVisione = dto.SenzaData ? null : dto.DataVisione ?? DateOnly.FromDateTime(DateTime.Now),
+                // Senza data se l'utente non vuole indicarla; se non la sceglie (flag rapido) vale oggi
+                DataVisione = dto.SenzaData ? null : dto.DataVisione ?? DateOnly.FromDateTime(DateTime.Now),
                 DataCreazione = DateTime.Now
             };
 
@@ -106,6 +105,13 @@ namespace CinemaApi.Services
                 DataVisione = visione.DataVisione
             };
         }
+
+        // false se l'utente non ha segnato il film come visto. Vale per tutte le sue visioni del film
+        // (prima del vincolo "una volta sola" potevano essercene più d'una)
+        public async Task<bool> CambiaData(int idUtente, int idFilm, DateOnly? data) =>
+            await _db.Visioni
+                .Where(v => v.IdUtente == idUtente && v.IdFilm == idFilm)
+                .ExecuteUpdateAsync(s => s.SetProperty(v => v.DataVisione, data)) > 0;
 
         // "Non visto": toglie tutte le visioni dell'utente per quel film (anche i doppioni di prima
         // che il film si potesse segnare una volta sola). false se non l'aveva segnato

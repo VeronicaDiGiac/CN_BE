@@ -45,15 +45,30 @@ namespace CinemaApi.Controllers
         [ProducesResponseType(409)]
         public async Task<IActionResult> Create([FromBody] CreateVisioneDto dto)
         {
-            // Data di visione non più scelta dall'utente (vedi CreateVisioneDto)
-            // if (dto.DataVisione > DateOnly.FromDateTime(DateTime.Now))
-            //     return BadRequest("La data di visione non può essere nel futuro");
+            if (!dto.SenzaData && dto.DataVisione > DateOnly.FromDateTime(DateTime.Now))
+                return BadRequest("La data di visione non può essere nel futuro");
             if (!await _visioniService.FilmEsiste(dto.IdFilm)) return NotFound("Film non trovato");
             if (await _visioniService.ESerie(dto.IdFilm)) return BadRequest("Per le serie TV si segnano gli episodi visti");
 
             var visione = await _visioniService.CreateVisione(dto, User.IdUtente());
             if (visione == null) return Conflict("Film già segnato come visto");
             return CreatedAtAction(nameof(Create), visione);
+        }
+
+        // Cambia (o toglie) la data di un film già visto dall'utente autenticato
+        [HttpPut("film/{idFilm}/data")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> CambiaData(int idFilm, [FromBody] DataVisioneDto dto)
+        {
+            if (!dto.SenzaData && dto.DataVisione == null) return BadRequest("Indica la data oppure scegli di non indicarla");
+            if (!dto.SenzaData && dto.DataVisione > DateOnly.FromDateTime(DateTime.Now))
+                return BadRequest("La data di visione non può essere nel futuro");
+            var data = dto.SenzaData ? null : dto.DataVisione;
+            if (!await _visioniService.CambiaData(User.IdUtente(), idFilm, data)) return NotFound();
+            return NoContent();
         }
 
         // "Non visto": toglie il film dai visti dell'utente
