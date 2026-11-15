@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using CinemaApi.Helpers;
 
 namespace CinemaApi.DTOs.RequestDto
 {
@@ -13,7 +14,11 @@ namespace CinemaApi.DTOs.RequestDto
         [Range(1, 5)]
         public int? Voto { get; set; }
 
-        [MaxLength(5000)]
+        // Una recensione è un testo vero: da 30 a 1000 parole (un commento ne ha al massimo 100).
+        // 12000 caratteri bastano per 1000 parole anche lunghe; la colonna nel DB è nvarchar(max)
+        [Required(ErrorMessage = "Scrivi il testo della recensione")]
+        [MaxLength(12000)]
+        [Parole(Minimo = LimitiParole.RecensioneMinimo, Massimo = LimitiParole.RecensioneMassimo)]
         public string? Contenuto { get; set; }
 
         public bool Spoiler { get; set; }
