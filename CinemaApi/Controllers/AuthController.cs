@@ -101,6 +101,26 @@ namespace CinemaApi.Controllers
             return Ok(sessione);
         }
 
+        // Sessione nuova dal token di rinnovo (il FE la chiede da solo quando il JWT scade).
+        // Niente limite sugli accessi: il token è casuale a 256 bit, provarne a caso non serve
+        [HttpPost("rinnova")]
+        [ProducesResponseType(typeof(LoginResponseDto), 200)]
+        [ProducesResponseType(401)]
+        public async Task<IActionResult> Rinnova([FromBody] TokenRinnovoDto dto)
+        {
+            var sessione = await _authService.Rinnova(dto.TokenRinnovo);
+            return sessione == null ? Unauthorized() : Ok(sessione);
+        }
+
+        // Logout: chiude la sessione su questo dispositivo. 204 anche se il token non esiste più
+        [HttpPost("esci")]
+        [ProducesResponseType(204)]
+        public async Task<IActionResult> Esci([FromBody] TokenRinnovoDto dto)
+        {
+            await _authService.Esci(dto.TokenRinnovo);
+            return NoContent();
+        }
+
         [HttpPost("password-dimenticata")]
         [EnableRateLimiting(LimitePasswordDimenticata)]
         [ProducesResponseType(204)]

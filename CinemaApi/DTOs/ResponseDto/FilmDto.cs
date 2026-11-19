@@ -24,6 +24,7 @@ namespace CinemaApi.DTOs.ResponseDto
         public int? DurataMinuti { get; set; }
         public int? TmdbId { get; set; }
         public double? VotoMedio { get; set; }
+        public int NumeroVoti { get; set; }
         public int NumeroRecensioni { get; set; }
 
         // Proiezione usata nelle query EF (diventa SQL, non carica le recensioni)
@@ -43,7 +44,8 @@ namespace CinemaApi.DTOs.ResponseDto
             NumeroStagioni = f.NumeroStagioni,
             DurataMinuti = f.DurataMinuti,
             TmdbId = f.TmdbId,
-            VotoMedio = f.Recensioni!.Average(r => (double?)r.Voto),
+            VotoMedio = f.Voti!.Average(v => (double?)v.Voto),
+            NumeroVoti = f.Voti!.Count(),
             NumeroRecensioni = f.Recensioni!.Count()
         };
     }

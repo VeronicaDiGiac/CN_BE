@@ -79,7 +79,8 @@ namespace CinemaApi.Helpers
                 .ExecuteDeleteAsync();
         }
 
-        // Elimina le recensioni indicate con tutti i loro commenti, le segnalazioni e i salvataggi collegati.
+        // Elimina le recensioni indicate con tutti i loro commenti, le stelle ricevute, le segnalazioni e i salvataggi collegati.
+        // Il voto dell'autore al film (VotiFilm) resta: è separato dalla recensione.
         public static async Task EliminaRecensioni(CinemaContext db, List<int> idRecensioni)
         {
             var idCommenti = await db.Commenti
@@ -94,6 +95,10 @@ namespace CinemaApi.Helpers
 
             await db.MiPiaceRecensioni
                 .Where(m => idRecensioni.Contains(m.IdRecensione))
+                .ExecuteDeleteAsync();
+
+            await db.VotiRecensioni
+                .Where(v => idRecensioni.Contains(v.IdRecensione))
                 .ExecuteDeleteAsync();
 
             await db.Notifiche

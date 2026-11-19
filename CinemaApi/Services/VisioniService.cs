@@ -56,9 +56,9 @@ namespace CinemaApi.Services
                     AnnoUscita = v.Film.AnnoUscita,
                     ImmagineUrl = v.Film.ImmagineUrl,
                     DataVisione = v.DataVisione,
-                    Voto = _db.Recensioni
-                        .Where(r => r.IdUtente == v.IdUtente && r.IdFilm == v.IdFilm)
-                        .Select(r => r.Voto)
+                    Voto = _db.VotiFilm
+                        .Where(f => f.IdUtente == v.IdUtente && f.IdFilm == v.IdFilm)
+                        .Select(f => (int?)f.Voto)
                         .FirstOrDefault()
                 })
                 .ToListAsync();

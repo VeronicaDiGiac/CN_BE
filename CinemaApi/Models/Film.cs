@@ -40,6 +40,8 @@ namespace CinemaApi.Models
 
         // Navigation properties
         public ICollection<Recensione>? Recensioni { get; set; }
+        // Stelle date dagli utenti (anche senza recensione): da qui il voto medio
+        public ICollection<VotoFilm>? Voti { get; set; }
         public ICollection<Preferito>? Preferiti { get; set; }
     }
 }

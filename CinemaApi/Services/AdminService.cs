@@ -167,7 +167,7 @@ namespace CinemaApi.Services
                     TitoloFilm = r.Film != null ? r.Film.Titolo : null,
                     IdUtente = r.IdUtente,
                     UserName = r.Utente != null ? r.Utente.UserName : null,
-                    Voto = r.Voto,
+                    Voto = r.Film!.Voti!.Where(v => v.IdUtente == r.IdUtente).Select(v => (int?)v.Voto).FirstOrDefault(),
                     Contenuto = r.Contenuto,
                     Spoiler = r.Spoiler,
                     Data = r.DataRecensione,

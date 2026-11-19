@@ -74,7 +74,7 @@ namespace CinemaApi.Services
                     Autore = r.Utente != null ? r.Utente.UserName : null,
                     Testo = r.Contenuto,
                     Spoiler = r.Spoiler,
-                    Voto = r.Voto,
+                    Voto = r.Film!.Voti!.Where(v => v.IdUtente == r.IdUtente).Select(v => (int?)v.Voto).FirstOrDefault(),
                     NumeroMiPiace = r.MiPiace!.Count(),
                     NumeroCommenti = r.Commenti!.Count()
                 })

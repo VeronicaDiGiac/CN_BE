@@ -49,13 +49,16 @@ namespace CinemaApi.Services
                 AutoreAdmin = r.Utente != null && r.Utente.Ruolo == Ruoli.Admin,
                 TitoloFilm = r.Film != null ? r.Film.Titolo : null,
                 ImmagineUrlFilm = r.Film != null ? r.Film.ImmagineUrl : null,
-                Voto = r.Voto,
+                Voto = r.Film!.Voti!.Where(v => v.IdUtente == r.IdUtente).Select(v => (int?)v.Voto).FirstOrDefault(),
                 Contenuto = r.Contenuto,
                 DataRecensione = r.DataRecensione,
                 Spoiler = r.Spoiler,
                 NumeroMiPiace = r.MiPiace!.Count(),
                 MiPiaceUtente = idUtenteAutenticato != null && r.MiPiace!.Any(m => m.IdUtente == idUtenteAutenticato),
-                NumeroCommenti = r.Commenti!.Count()
+                NumeroCommenti = r.Commenti!.Count(),
+                VotoMedioRecensione = r.Voti!.Average(v => (double?)v.Voto),
+                NumeroVotiRecensione = r.Voti!.Count(),
+                MioVotoRecensione = r.Voti!.Where(v => v.IdUtente == idUtenteAutenticato).Select(v => (int?)v.Voto).FirstOrDefault()
             });
 
         // Idempotente: un secondo "mi piace" non cambia niente (e non manda un'altra notifica)
@@ -99,13 +102,15 @@ namespace CinemaApi.Services
             {
                 IdUtente = idUtente,
                 IdFilm = dto.IdFilm,
-                Voto = dto.Voto,
                 Contenuto = dto.Contenuto,
                 DataRecensione = DateTime.Now,
                 Spoiler = dto.Spoiler
             };
             _db.Recensioni.Add(recensione);
             await _db.SaveChangesAsync();
+            if (dto.Voto != null) await VotiService.ImpostaVotoFilm(_db, dto.IdFilm, idUtente, dto.Voto.Value);
+            var voto = await _db.VotiFilm.Where(v => v.IdUtente == idUtente && v.IdFilm == dto.IdFilm)
+                .Select(v => (int?)v.Voto).FirstOrDefaultAsync();
             return new RecensioneDto
             {
                 IdRecensione = recensione.IdRecensione,
@@ -114,7 +119,7 @@ namespace CinemaApi.Services
                 UserName = await _db.Utenti.Where(u => u.IdUtente == idUtente).Select(u => u.UserName).FirstOrDefaultAsync(),
                 AutoreAdmin = await _db.Utenti.AnyAsync(u => u.IdUtente == idUtente && u.Ruolo == Ruoli.Admin),
                 TitoloFilm = await _db.Film.Where(f => f.IdFilm == dto.IdFilm).Select(f => f.Titolo).FirstOrDefaultAsync(),
-                Voto = recensione.Voto,
+                Voto = voto,
                 Contenuto = recensione.Contenuto,
                 DataRecensione = recensione.DataRecensione,
                 Spoiler = recensione.Spoiler
@@ -126,11 +131,12 @@ namespace CinemaApi.Services
             var recensione = await _db.Recensioni.FindAsync(id);
             if (recensione == null) return false;
 
-            recensione.Voto = dto.Voto;
             recensione.Contenuto = dto.Contenuto;
             recensione.Spoiler = dto.Spoiler;
 
             await _db.SaveChangesAsync();
+            // Le stelle sono il voto dell'autore al film (anche quando a modificare è un admin)
+            if (dto.Voto != null) await VotiService.ImpostaVotoFilm(_db, recensione.IdFilm, recensione.IdUtente, dto.Voto.Value);
             return true;
         }
 

@@ -11,6 +11,7 @@ namespace CinemaApi.DTOs.RequestDto
         [Required]
         public int IdFilm { get; set; }
 
+        // Facoltativo: se c'è diventa (o cambia) il voto dell'autore al film, in VotiFilm
         [Range(1, 5)]
         public int? Voto { get; set; }
 

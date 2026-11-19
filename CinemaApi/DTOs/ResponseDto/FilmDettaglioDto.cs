@@ -14,7 +14,11 @@ namespace CinemaApi.DTOs.ResponseDto
         public string? Descrizione { get; set; }
         // true se la trama è in inglese (TMDB non aveva quella italiana): il FE lo segnala
         public bool TramaInInglese { get; set; }
+        // Media delle stelle date al film (con o senza recensione) e quante sono
         public double? VotoMedio { get; set; }
+        public int NumeroVoti { get; set; }
+        // Il voto dell'utente autenticato (null se non ha votato o non è loggato)
+        public int? VotoUtente { get; set; }
         public int NumeroRecensioni { get; set; }
         public int? TmdbId { get; set; }
         // Per le serie: durata tipica di un episodio

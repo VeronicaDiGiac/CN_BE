@@ -39,7 +39,9 @@ namespace CinemaApi.Services
                     Attori = f.Attori,
                     ImmagineUrl = f.ImmagineUrl,
                     Descrizione = f.Descrizione,
-                    VotoMedio = f.Recensioni.Any() ? f.Recensioni.Average(r => r.Voto) : null,
+                    VotoMedio = f.Voti!.Average(v => (double?)v.Voto),
+                    NumeroVoti = f.Voti!.Count(),
+                    VotoUtente = f.Voti!.Where(v => v.IdUtente == idUtenteAutenticato).Select(v => (int?)v.Voto).FirstOrDefault(),
                     NumeroRecensioni = f.Recensioni.Count(),
                     TmdbId = f.TmdbId,
                     DurataMinuti = f.DurataMinuti,
@@ -116,8 +118,8 @@ namespace CinemaApi.Services
             var ordinata = ordinamento switch
             {
                 OrdinamentiCatalogo.Voto => query
-                    .OrderByDescending(f => f.Recensioni!.Average(r => (double?)r.Voto) ?? 0)
-                    .ThenByDescending(f => f.Recensioni!.Count()),
+                    .OrderByDescending(f => f.Voti!.Average(v => (double?)v.Voto) ?? 0)
+                    .ThenByDescending(f => f.Voti!.Count()),
                 OrdinamentiCatalogo.Titolo => query.OrderBy(f => f.Titolo),
                 _ => query.OrderByDescending(f => f.AnnoUscita ?? 0).ThenByDescending(f => f.IdFilm)
             };
@@ -200,6 +202,7 @@ namespace CinemaApi.Services
             await _db.Visioni.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.EpisodiVisti.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.SerieSeguite.Where(s => s.IdFilm == id).ExecuteDeleteAsync();
+            await _db.VotiFilm.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdFilm == id).ExecuteDeleteAsync();
             await _db.Segnalazioni.Where(s => s.TipoContenuto == TipiContenuto.Film && s.IdContenuto == id).ExecuteDeleteAsync();
@@ -296,6 +299,12 @@ namespace CinemaApi.Services
             await _db.SerieSeguite.Where(s => s.IdFilm == idDaEliminare && avvisiSulTenuto.Contains(s.IdUtente)).ExecuteDeleteAsync();
             await _db.Database.ExecuteSqlInterpolatedAsync(
                 $"UPDATE dbo.SerieSeguite SET IdFilm = {idDaTenere} WHERE IdFilm = {idDaEliminare}");
+
+            // Voti: uno per utente, vale quello sulla scheda tenuta (anche qui IdFilm è nella chiave)
+            var votiSulTenuto = _db.VotiFilm.Where(v => v.IdFilm == idDaTenere).Select(v => v.IdUtente);
+            await _db.VotiFilm.Where(v => v.IdFilm == idDaEliminare && votiSulTenuto.Contains(v.IdUtente)).ExecuteDeleteAsync();
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE dbo.VotiFilm SET IdFilm = {idDaTenere} WHERE IdFilm = {idDaEliminare}");
 
             // Segnalazioni sulla scheda eliminata: passano a quella tenuta
             await _db.Segnalazioni.Where(s => s.TipoContenuto == TipiContenuto.Film && s.IdContenuto == idDaEliminare)

@@ -56,10 +56,14 @@ namespace CinemaApi.Services
                 .Select(v => new { v.IdFilm, v.DurataMinuti, v.Film!.Titolo, v.Film.ImmagineUrl })
                 .ToListAsync();
 
-            var recensioni = await _db.Recensioni
-                .Where(r => r.IdUtente == idUtente && r.Voto != null
-                            && (anno == null || (r.DataRecensione != null && r.DataRecensione.Value.Year == anno)))
-                .Select(r => new { r.IdFilm, r.Voto, r.DataRecensione, r.Film!.Titolo, r.Film.ImmagineUrl })
+            var numeroRecensioni = await _db.Recensioni
+                .CountAsync(r => r.IdUtente == idUtente
+                                 && (anno == null || (r.DataRecensione != null && r.DataRecensione.Value.Year == anno)));
+
+            // Voti dati ai film (anche senza recensione), nell'anno in cui sono stati dati
+            var voti = await _db.VotiFilm
+                .Where(v => v.IdUtente == idUtente && (anno == null || v.DataVoto.Year == anno))
+                .Select(v => new { v.IdFilm, v.Voto, v.DataVoto, v.Film!.Titolo, v.Film.ImmagineUrl })
                 .ToListAsync();
 
             var stat = new StatisticheDto
@@ -73,8 +77,8 @@ namespace CinemaApi.Services
                 EpisodiVisti = episodi.Count,
                 SerieDiverse = episodi.Select(e => e.IdFilm).Distinct().Count(),
                 MinutiSerie = episodi.Sum(e => e.DurataMinuti ?? 0),
-                Recensioni = recensioni.Count,
-                VotoMedio = recensioni.Count > 0 ? Math.Round(recensioni.Average(r => r.Voto!.Value), 1) : null,
+                Recensioni = numeroRecensioni,
+                VotoMedio = voti.Count > 0 ? Math.Round(voti.Average(v => v.Voto), 1) : null,
                 // Ogni film conta una volta anche se rivisto: "i generi che ho visto", non "quante volte"
                 GeneriTop = Classifica(visioni.DistinctBy(v => v.IdFilm).Select(v => v.Genere)),
                 RegistiTop = Classifica(visioni.DistinctBy(v => v.IdFilm).Select(v => v.Regista))
@@ -107,7 +111,7 @@ namespace CinemaApi.Services
                 stat.SeriePiuVista = new FilmStatisticaDto { IdFilm = s.IdFilm, Titolo = s.Titolo, ImmagineUrl = s.ImmagineUrl, Dettaglio = seriePiuVista.Count().ToString() };
             }
 
-            var votoPiuAlto = recensioni.OrderByDescending(r => r.Voto).ThenByDescending(r => r.DataRecensione).FirstOrDefault();
+            var votoPiuAlto = voti.OrderByDescending(v => v.Voto).ThenByDescending(v => v.DataVoto).FirstOrDefault();
             if (votoPiuAlto != null)
                 stat.FilmVotoPiuAlto = new FilmStatisticaDto { IdFilm = votoPiuAlto.IdFilm, Titolo = votoPiuAlto.Titolo, ImmagineUrl = votoPiuAlto.ImmagineUrl, Dettaglio = votoPiuAlto.Voto.ToString() };
 

@@ -114,6 +114,30 @@ Risposta `204 No Content`
 
 ---
 
+### Voti (stelle)
+
+Il voto al film è separato dalla recensione (tabella `VotiFilm`): si vota anche senza scrivere.
+Il `voto` di una recensione è il voto del suo autore al film; mandarlo con POST/PUT della recensione
+lo crea o lo cambia (è facoltativo). Le stelle date alle recensioni degli altri stanno in `VotiRecensioni`.
+
+- `PUT /api/film/{id}/voto` con `{ "voto": 4 }` (1-5) · `DELETE /api/film/{id}/voto`
+- `PUT /api/recensioni/{id}/voto` con `{ "voto": 4 }` (non sulla propria: 400) · `DELETE /api/recensioni/{id}/voto`
+
+Risposta `200 OK`: `{ "votoMedio": 4.2, "numeroVoti": 6, "votoUtente": 4 }`.
+Scheda film: `votoMedio`, `numeroVoti`, `votoUtente`; recensione: `votoMedioRecensione`, `numeroVotiRecensione`, `mioVotoRecensione`.
+
+---
+
+### Sessione
+
+Login, registrazione e accesso con Google restituiscono `token` (JWT, 60 minuti) e `tokenRinnovo` (30 giorni, vale una volta).
+- `POST /api/auth/rinnova` con `{ "tokenRinnovo": "..." }`: nuova coppia `token` + `tokenRinnovo`, `401` se non vale più.
+- `POST /api/auth/esci` con `{ "tokenRinnovo": "..." }`: logout di quel dispositivo (`204`).
+Il cambio o la reimpostazione della password annullano tutti i token di rinnovo (tabella `TokenRinnovo`, solo l'hash).
+Script del DB: `Database/VotiESessioni.sql` (va lanciato prima di pubblicare il BE).
+
+---
+
 ### Commenti
 
 #### GET /api/commenti?idRecensione={n}

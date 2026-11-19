@@ -49,7 +49,7 @@ namespace CinemaApi.Services
                     TitoloFilm = r.Film!.Titolo,
                     ImmagineUrl = r.Film.ImmagineUrl,
                     IdRecensione = r.IdRecensione,
-                    Voto = r.Voto,
+                    Voto = r.Film!.Voti!.Where(v => v.IdUtente == r.IdUtente).Select(v => (int?)v.Voto).FirstOrDefault(),
                     Testo = r.Contenuto,
                     Spoiler = r.Spoiler
                 });

@@ -17,6 +17,11 @@ namespace CinemaApi.Services
         // Durata del link "Password dimenticata?"
         public const int MinutiValiditaReset = 30;
 
+        // Il JWT dura poco; il token di rinnovo 30 giorni dall'ultimo uso: chi apre l'app
+        // almeno una volta al mese non deve rifare l'accesso
+        public const int MinutiValiditaToken = 60;
+        public const int GiorniValiditaRinnovo = 30;
+
         // Claim del JWT con la "versione" della password (ticks dell'ultimo cambio)
         public const string ClaimVersionePassword = "versionePassword";
 
@@ -43,15 +48,7 @@ namespace CinemaApi.Services
             bool passwordCorretta = BCrypt.Net.BCrypt.Verify(dto.Password, utente.PasswordHash);
             if (!passwordCorretta) return null;
 
-            var tokenString = GeneraToken(utente);
-
-            return new LoginResponseDto
-            {
-                IdUtente = utente.IdUtente,
-                UserName = utente.UserName,
-                Ruolo = utente.Ruolo,
-                Token = tokenString
-            };
+            return await CreaSessione(utente);
         }
 
         // Ritorna null se l'email esiste già, altrimenti il LoginResponseDto del nuovo utente
@@ -73,15 +70,7 @@ namespace CinemaApi.Services
             _db.Utenti.Add(utente);
             await _db.SaveChangesAsync();
 
-            var tokenString = GeneraToken(utente);
-
-            return new LoginResponseDto
-            {
-                IdUtente = utente.IdUtente,
-                UserName = utente.UserName,
-                Ruolo = utente.Ruolo,
-                Token = tokenString
-            };
+            return await CreaSessione(utente);
         }
 
         // Ritorna null se l'utente non esiste, false se la password attuale è sbagliata,
@@ -100,6 +89,7 @@ namespace CinemaApi.Services
             // Scollega tutti i dispositivi: i token emessi finora non valgono più
             utente.DataCambioPassword = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+            await AnnullaRinnovi(utente.IdUtente);
             await InviaConfermaPasswordCambiata(utente);
             return true;
         }
@@ -145,21 +135,69 @@ namespace CinemaApi.Services
             return testo.Length <= 50 ? testo : testo[..50];
         }
 
-        // Nuovo token per chi ha appena cambiato la password dal profilo,
-        // così resta collegato solo il dispositivo da cui ha fatto il cambio
+        // Nuova sessione (JWT + token di rinnovo). Usata dopo ogni accesso e anche per chi ha appena
+        // cambiato la password dal profilo, così resta collegato solo il dispositivo da cui ha fatto il cambio
         public async Task<LoginResponseDto?> CreaSessione(int idUtente)
         {
             var utente = await _db.Utenti.FindAsync(idUtente);
-            if (utente == null) return null;
+            return utente == null ? null : await CreaSessione(utente);
+        }
+
+        private async Task<LoginResponseDto> CreaSessione(Utente utente)
+        {
+            // Pulizia: i token di rinnovo scaduti dell'utente non servono più
+            await _db.TokenRinnovo
+                .Where(t => t.IdUtente == utente.IdUtente && t.Scadenza <= DateTime.UtcNow)
+                .ExecuteDeleteAsync();
+
+            var tokenRinnovo = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+            _db.TokenRinnovo.Add(new TokenRinnovo
+            {
+                IdUtente = utente.IdUtente,
+                TokenHash = HashToken(tokenRinnovo),
+                DataCreazione = DateTime.UtcNow,
+                Scadenza = DateTime.UtcNow.AddDays(GiorniValiditaRinnovo)
+            });
+            await _db.SaveChangesAsync();
 
             return new LoginResponseDto
             {
                 IdUtente = utente.IdUtente,
                 UserName = utente.UserName,
                 Ruolo = utente.Ruolo,
-                Token = GeneraToken(utente)
+                Token = GeneraToken(utente),
+                TokenRinnovo = tokenRinnovo
             };
         }
+
+        // Il JWT è scaduto: con il token di rinnovo si riceve una sessione nuova.
+        // Il token vale una volta sola (DELETE condizionata: se arrivano due richieste insieme ne passa una).
+        // null se non esiste, è scaduto, è già stato usato o l'utente non c'è più.
+        public async Task<LoginResponseDto?> Rinnova(string tokenRinnovo)
+        {
+            var hash = HashToken(tokenRinnovo);
+            var riga = await _db.TokenRinnovo
+                .Where(t => t.TokenHash == hash && t.Scadenza > DateTime.UtcNow)
+                .Select(t => new { t.IdTokenRinnovo, t.IdUtente })
+                .FirstOrDefaultAsync();
+            if (riga == null) return null;
+
+            var usato = await _db.TokenRinnovo.Where(t => t.IdTokenRinnovo == riga.IdTokenRinnovo).ExecuteDeleteAsync();
+            if (usato == 0) return null;
+
+            return await CreaSessione(riga.IdUtente);
+        }
+
+        // Logout: il token di rinnovo di questo dispositivo non vale più
+        public Task Esci(string tokenRinnovo)
+        {
+            var hash = HashToken(tokenRinnovo);
+            return _db.TokenRinnovo.Where(t => t.TokenHash == hash).ExecuteDeleteAsync();
+        }
+
+        // Dopo un cambio password nessun dispositivo può rinnovare la sessione
+        private Task AnnullaRinnovi(int idUtente) =>
+            _db.TokenRinnovo.Where(t => t.IdUtente == idUtente).ExecuteDeleteAsync();
 
         // Usato dalla validazione del JWT (Program.cs): il token vale solo se è stato
         // emesso dopo l'ultimo cambio password dell'utente
@@ -234,6 +272,7 @@ namespace CinemaApi.Services
             richiesta.Utente.DataCambioPassword = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             await AnnullaLinkAttivi(richiesta.IdUtente);
+            await AnnullaRinnovi(richiesta.IdUtente);
 
             await InviaConfermaPasswordCambiata(richiesta.Utente);
             return true;
@@ -279,7 +318,7 @@ namespace CinemaApi.Services
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddHours(8),
+                expires: DateTime.UtcNow.AddMinutes(MinutiValiditaToken),
                 signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
             );
 

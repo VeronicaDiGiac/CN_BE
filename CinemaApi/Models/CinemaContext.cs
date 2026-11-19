@@ -66,6 +66,12 @@ namespace CinemaApi.Models
 
         public DbSet<SerieSeguita> SerieSeguite { get; set; }
 
+        public DbSet<VotoFilm> VotiFilm { get; set; }
+
+        public DbSet<VotoRecensione> VotiRecensioni { get; set; }
+
+        public DbSet<TokenRinnovo> TokenRinnovo { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -86,6 +92,12 @@ namespace CinemaApi.Models
 
             modelBuilder.Entity<SerieSeguita>()
                 .HasKey(s => new { s.IdUtente, s.IdFilm });
+
+            modelBuilder.Entity<VotoFilm>()
+                .HasKey(v => new { v.IdUtente, v.IdFilm });
+
+            modelBuilder.Entity<VotoRecensione>()
+                .HasKey(v => new { v.IdUtente, v.IdRecensione });
 
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)
