@@ -40,6 +40,32 @@ namespace CinemaApi.Services
             return true;
         }
 
+        // Ricerca persone per nome utente (mai per email). Prima chi inizia con il testo cercato,
+        // poi chi lo contiene; a parità, chi ha più follower
+        public const int RisultatiRicercaMax = 20;
+
+        public async Task<List<UtenteTrovatoDto>> CercaUtenti(string testo, int? idUtenteAutenticato)
+        {
+            var t = testo.Trim();
+            return await _db.Utenti
+                .Where(u => u.UserName.Contains(t))
+                .OrderByDescending(u => u.UserName.StartsWith(t))
+                .ThenByDescending(u => _db.Follow.Count(f => f.FollowingId == u.IdUtente))
+                .ThenBy(u => u.UserName)
+                .Take(RisultatiRicercaMax)
+                .Select(u => new UtenteTrovatoDto
+                {
+                    IdUtente = u.IdUtente,
+                    UserName = u.UserName,
+                    AvatarUrl = u.AvatarUrl,
+                    NumeroRecensioni = _db.Recensioni.Count(r => r.IdUtente == u.IdUtente),
+                    NumeroFollower = _db.Follow.Count(f => f.FollowingId == u.IdUtente),
+                    Seguito = idUtenteAutenticato != null &&
+                              _db.Follow.Any(f => f.FollowerId == idUtenteAutenticato && f.FollowingId == u.IdUtente)
+                })
+                .ToListAsync();
+        }
+
         public async Task<UtenteProfiloDto?> GetProfilo(int? idUtente)
         {
             var profilo = await _db.Utenti

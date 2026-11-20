@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CinemaApi.Services
 {
     // Feed delle attività delle persone seguite. Non ha una tabella sua: unisce al volo
-    // visioni e recensioni con una sola query (UNION ALL), ordinata e paginata dal DB.
+    // visioni, recensioni e voti con una sola query (UNION ALL), ordinata e paginata dal DB.
     // Per aggiungere un nuovo tipo di attività basta un'altra Select con la stessa forma.
     public class FeedService
     {
@@ -54,7 +54,28 @@ namespace CinemaApi.Services
                     Spoiler = r.Spoiler
                 });
 
-            var tutte = visioni.Concat(recensioni);
+            // Voti senza recensione: chi ha anche recensito il film ha già la voce della recensione (con le stelle).
+            // DataVoto cambia quando si cambia il voto: la voce torna in cima con le stelle nuove
+            var voti = _db.VotiFilm
+                .Where(v => seguiti.Contains(v.IdUtente) &&
+                            !_db.Recensioni.Any(r => r.IdUtente == v.IdUtente && r.IdFilm == v.IdFilm))
+                .Select(v => new FeedVoceDto
+                {
+                    Tipo = TipiAttivita.Voto,
+                    Data = v.DataVoto,
+                    IdUtente = v.IdUtente,
+                    UserName = v.Utente!.UserName,
+                    AvatarUrl = v.Utente.AvatarUrl,
+                    IdFilm = v.IdFilm,
+                    TitoloFilm = v.Film!.Titolo,
+                    ImmagineUrl = v.Film.ImmagineUrl,
+                    IdRecensione = null,
+                    Voto = (int?)v.Voto,
+                    Testo = null,
+                    Spoiler = false
+                });
+
+            var tutte = visioni.Concat(recensioni).Concat(voti);
             var totale = await tutte.CountAsync();
             var voci = await tutte
                 .OrderByDescending(v => v.Data)

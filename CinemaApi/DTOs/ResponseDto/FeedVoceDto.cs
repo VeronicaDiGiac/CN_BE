@@ -1,6 +1,6 @@
 namespace CinemaApi.DTOs.ResponseDto
 {
-    // Una voce del feed: "X ha visto Y" oppure "X ha recensito Y"
+    // Una voce del feed: "X ha visto Y", "X ha recensito Y" oppure "X ha dato 4 stelle a Y"
     public class FeedVoceDto
     {
         // Uno dei valori di Helpers.TipiAttivita
@@ -17,6 +17,7 @@ namespace CinemaApi.DTOs.ResponseDto
 
         // Solo per le recensioni
         public int? IdRecensione { get; set; }
+        // Recensioni e voti
         public int? Voto { get; set; }
         public string? Testo { get; set; }
         public bool Spoiler { get; set; }

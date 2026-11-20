@@ -52,6 +52,8 @@ namespace CinemaApi.Helpers
     {
         public const string Visione = "Visione";
         public const string Recensione = "Recensione";
+        // Stelle date a un film senza recensione (con la recensione il voto è già nella sua voce)
+        public const string Voto = "Voto";
     }
 
     // Valori ammessi dal CHECK constraint di Notifiche.Tipo

@@ -15,6 +15,16 @@ namespace CinemaApi.Controllers
         private readonly UtentiService _utentiService;
         public UtentiController(UtentiService utentiService) { _utentiService = utentiService; }
 
+        // Cerca persone per nome utente: almeno 2 caratteri, al massimo 20 risultati. Pubblica come i profili
+        [HttpGet("cerca")]
+        [ProducesResponseType(typeof(List<UtenteTrovatoDto>), 200)]
+        public async Task<IActionResult> Cerca([FromQuery] string? q)
+        {
+            if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 2) return Ok(new List<UtenteTrovatoDto>());
+            if (q.Length > 50) q = q[..50];
+            return Ok(await _utentiService.CercaUtenti(q, User.IdUtenteOpzionale()));
+        }
+
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(UtenteProfiloDto), 200)]
         [ProducesResponseType(404)]
