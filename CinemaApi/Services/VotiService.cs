@@ -10,8 +10,13 @@ namespace CinemaApi.Services
     public class VotiService
     {
         private readonly CinemaContext _db;
+        private readonly NotificheService _notifiche;
 
-        public VotiService(CinemaContext db) { _db = db; }
+        public VotiService(CinemaContext db, NotificheService notifiche)
+        {
+            _db = db;
+            _notifiche = notifiche;
+        }
 
         public Task<bool> FilmEsiste(int idFilm) => _db.FilmApprovatoEsiste(idFilm);
 
@@ -21,6 +26,7 @@ namespace CinemaApi.Services
         public async Task<VotiDto> VotaFilm(int idFilm, int idUtente, int voto)
         {
             await ImpostaVotoFilm(_db, idFilm, idUtente, voto);
+            await _notifiche.NotificaSeguaci(idUtente, TipiNotifica.SeguitoVoto, idFilm, voto: voto);
             return await RiepilogoFilm(idFilm, idUtente);
         }
 

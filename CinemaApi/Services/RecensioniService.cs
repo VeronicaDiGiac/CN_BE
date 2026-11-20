@@ -111,6 +111,7 @@ namespace CinemaApi.Services
             if (dto.Voto != null) await VotiService.ImpostaVotoFilm(_db, dto.IdFilm, idUtente, dto.Voto.Value);
             var voto = await _db.VotiFilm.Where(v => v.IdUtente == idUtente && v.IdFilm == dto.IdFilm)
                 .Select(v => (int?)v.Voto).FirstOrDefaultAsync();
+            await _notifiche.NotificaSeguaci(idUtente, TipiNotifica.SeguitoRecensione, dto.IdFilm, recensione.IdRecensione, voto);
             return new RecensioneDto
             {
                 IdRecensione = recensione.IdRecensione,

@@ -20,6 +20,8 @@ namespace CinemaApi.Models
         // Solo per NuovoEpisodio
         public int? Stagione { get; set; }
         public int? Episodio { get; set; }
+        // Solo per SeguitoVoto: le stelle date
+        public int? Voto { get; set; }
         public bool Letta { get; set; }
         public DateTime DataCreazione { get; set; }
 

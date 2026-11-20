@@ -72,6 +72,8 @@ namespace CinemaApi.Models
 
         public DbSet<TokenRinnovo> TokenRinnovo { get; set; }
 
+        public DbSet<StoGuardando> StoGuardando { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -49,6 +49,25 @@ namespace CinemaApi.Controllers
             return Ok(following);
         }
 
+        // Dal profilo di una persona: la segui e hai la campanella accesa?
+        [HttpGet("{followingId}/avvisi")]
+        [Authorize]
+        [ProducesResponseType(typeof(AvvisiFollowDto), 200)]
+        public async Task<IActionResult> StatoAvvisi(int followingId) =>
+            Ok(await _followService.StatoAvvisi(User.IdUtente(), followingId));
+
+        // Campanella: avvisi quando la persona seguita guarda, vede, vota o recensisce. 404 se non la segui
+        [HttpPut("{followingId}/avvisi")]
+        [Authorize]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> ImpostaAvvisi(int followingId, [FromBody] AvvisiFollowDto dto)
+        {
+            if (!await _followService.ImpostaAvvisi(User.IdUtente(), followingId, dto.Avvisi))
+                return NotFound("Non segui questo utente");
+            return NoContent();
+        }
+
         [HttpDelete("{followingId}")]
         [Authorize]
         [ProducesResponseType(204)]

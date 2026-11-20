@@ -10,8 +10,13 @@ namespace CinemaApi.Services
     public class VisioniService
     {
         private readonly CinemaContext _db;
+        private readonly NotificheService _notifiche;
 
-        public VisioniService(CinemaContext db) { _db = db; }
+        public VisioniService(CinemaContext db, NotificheService notifiche)
+        {
+            _db = db;
+            _notifiche = notifiche;
+        }
 
         public Task<bool> FilmEsiste(int idFilm) => _db.FilmApprovatoEsiste(idFilm);
 
@@ -92,6 +97,9 @@ namespace CinemaApi.Services
             await _db.SaveChangesAsync();
             await _db.DaVedere.Where(d => d.IdUtente == idUtente && d.IdFilm == dto.IdFilm).ExecuteDeleteAsync();
             await transazione.CommitAsync();
+            // Visto: "Sto guardando" su questo film finisce, e chi ha la campanella accesa lo sa
+            await StoGuardandoService.FinitoDiGuardare(_db, idUtente, dto.IdFilm);
+            await _notifiche.NotificaSeguaci(idUtente, TipiNotifica.SeguitoVisto, dto.IdFilm);
 
             var film = await _db.Film.FindAsync(dto.IdFilm);
             return new VisioneDto

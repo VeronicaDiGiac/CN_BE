@@ -33,6 +33,34 @@ namespace CinemaApi.Services
             await _db.SaveChangesAsync();
         }
 
+        // Avvisa chi segue idMittente con la campanella accesa (Follow.Avvisi) di una sua attività.
+        // Una sola notifica non letta per persona, tipo e titolo: cambiare voto due volte ne lascia una
+        public async Task NotificaSeguaci(int idMittente, string tipo, int idFilm, int? idRecensione = null, int? voto = null)
+        {
+            var destinatari = await _db.Follow
+                .Where(f => f.FollowingId == idMittente && f.Avvisi)
+                .Select(f => f.FollowerId)
+                .ToListAsync();
+            if (destinatari.Count == 0) return;
+
+            await _db.Notifiche
+                .Where(n => n.IdMittente == idMittente && n.Tipo == tipo && n.IdFilm == idFilm && !n.Letta
+                            && destinatari.Contains(n.IdDestinatario))
+                .ExecuteDeleteAsync();
+            var ora = DateTime.Now;
+            _db.Notifiche.AddRange(destinatari.Select(d => new Notifica
+            {
+                IdDestinatario = d,
+                IdMittente = idMittente,
+                Tipo = tipo,
+                IdFilm = idFilm,
+                IdRecensione = idRecensione,
+                Voto = voto,
+                DataCreazione = ora
+            }));
+            await _db.SaveChangesAsync();
+        }
+
         // Toglie una notifica non ancora letta quando l'azione viene annullata
         // (es. "mi piace" tolto subito dopo): evita notifiche di cose che non esistono più
         // Si confrontano solo i riferimenti indicati (recensione, commento o discussione)
@@ -69,7 +97,8 @@ namespace CinemaApi.Services
                     IdCommento = n.IdCommento,
                     IdDiscussione = n.IdDiscussione,
                     Stagione = n.Stagione,
-                    Episodio = n.Episodio
+                    Episodio = n.Episodio,
+                    Voto = n.Voto
                 })
                 .ToListAsync();
 

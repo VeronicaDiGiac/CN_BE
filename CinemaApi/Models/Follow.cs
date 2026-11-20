@@ -9,6 +9,9 @@ namespace CinemaApi.Models
         public int FollowerId { get; set; }     // chi segue
         public int FollowingId { get; set; }    // chi viene seguito
         public DateTime? DataFollow { get; set; }
+        // Campanella accesa sul profilo: chi segue riceve una notifica quando l'altro
+        // guarda, vede, vota o recensisce qualcosa (NotificheService.NotificaSeguaci)
+        public bool Avvisi { get; set; }
 
         // Navigation properties verso Utenti.
         // Due relazioni diverse verso la STESSA tabella, quindi vanno

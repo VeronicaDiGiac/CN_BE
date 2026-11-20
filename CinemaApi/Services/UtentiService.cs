@@ -137,6 +137,7 @@ namespace CinemaApi.Services
             await _db.VotiFilm.Where(v => v.IdUtente == id).ExecuteDeleteAsync();
             await _db.VotiRecensioni.Where(v => v.IdUtente == id).ExecuteDeleteAsync();
             await _db.TokenRinnovo.Where(t => t.IdUtente == id).ExecuteDeleteAsync();
+            await _db.StoGuardando.Where(s => s.IdUtente == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdUtente == id).ExecuteDeleteAsync();
             await _db.Salvati.Where(s => s.IdUtente == id).ExecuteDeleteAsync();
             await _db.MiPiaceRecensioni.Where(m => m.IdUtente == id).ExecuteDeleteAsync();

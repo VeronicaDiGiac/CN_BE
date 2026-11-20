@@ -40,5 +40,7 @@ namespace CinemaApi.DTOs.ResponseDto
         public DateOnly? UltimaVisione { get; set; }
         // In quante liste dell'utente c'è il film
         public int NumeroListe { get; set; }
+        // L'utente ha acceso "Sto guardando" su questo titolo e non è ancora scaduto
+        public bool StoGuardando { get; set; }
     }
 }

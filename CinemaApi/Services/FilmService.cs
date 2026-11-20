@@ -58,7 +58,8 @@ namespace CinemaApi.Services
                     UltimaVisione = _db.Visioni
                         .Where(v => v.IdFilm == f.IdFilm && v.IdUtente == idUtenteAutenticato)
                         .Max(v => (DateOnly?)v.DataVisione),
-                    NumeroListe = _db.ListeFilm.Count(lf => lf.IdFilm == f.IdFilm && lf.Lista!.IdUtente == idUtenteAutenticato)
+                    NumeroListe = _db.ListeFilm.Count(lf => lf.IdFilm == f.IdFilm && lf.Lista!.IdUtente == idUtenteAutenticato),
+                    StoGuardando = _db.StoGuardando.Any(s => s.IdFilm == f.IdFilm && s.IdUtente == idUtenteAutenticato && s.Fine > DateTime.Now)
                 })
                 .FirstOrDefaultAsync();
 
@@ -203,6 +204,7 @@ namespace CinemaApi.Services
             await _db.EpisodiVisti.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.SerieSeguite.Where(s => s.IdFilm == id).ExecuteDeleteAsync();
             await _db.VotiFilm.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
+            await _db.StoGuardando.Where(s => s.IdFilm == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdFilm == id).ExecuteDeleteAsync();
             await _db.Segnalazioni.Where(s => s.TipoContenuto == TipiContenuto.Film && s.IdContenuto == id).ExecuteDeleteAsync();
@@ -299,6 +301,10 @@ namespace CinemaApi.Services
             await _db.SerieSeguite.Where(s => s.IdFilm == idDaEliminare && avvisiSulTenuto.Contains(s.IdUtente)).ExecuteDeleteAsync();
             await _db.Database.ExecuteSqlInterpolatedAsync(
                 $"UPDATE dbo.SerieSeguite SET IdFilm = {idDaTenere} WHERE IdFilm = {idDaEliminare}");
+
+            // "Sto guardando" dura poche ore: passa alla scheda tenuta
+            await _db.StoGuardando.Where(s => s.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.IdFilm, idDaTenere));
 
             // Voti: uno per utente, vale quello sulla scheda tenuta (anche qui IdFilm è nella chiave)
             var votiSulTenuto = _db.VotiFilm.Where(v => v.IdFilm == idDaTenere).Select(v => v.IdUtente);

@@ -81,6 +81,22 @@ namespace CinemaApi.Services
         }
 
 
+        // La segui? Hai la campanella accesa?
+        public async Task<AvvisiFollowDto> StatoAvvisi(int followerId, int followingId)
+        {
+            var f = await _db.Follow
+                .Where(x => x.FollowerId == followerId && x.FollowingId == followingId)
+                .Select(x => new { x.Avvisi })
+                .FirstOrDefaultAsync();
+            return new AvvisiFollowDto { Segui = f != null, Avvisi = f?.Avvisi ?? false };
+        }
+
+        // false se non la segue: la campanella c'è solo per chi si segue
+        public async Task<bool> ImpostaAvvisi(int followerId, int followingId, bool attivi) =>
+            await _db.Follow
+                .Where(f => f.FollowerId == followerId && f.FollowingId == followingId)
+                .ExecuteUpdateAsync(s => s.SetProperty(f => f.Avvisi, attivi)) > 0;
+
         public async Task <bool> DeleteFollow (int followerId, int followingId)
         {
             var follow = await _db.Follow.FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FollowingId == followingId);

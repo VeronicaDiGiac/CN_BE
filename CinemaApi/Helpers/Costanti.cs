@@ -69,6 +69,11 @@ namespace CinemaApi.Helpers
         public const string MiPiaceDiscussione = "MiPiaceDiscussione";
         // Qualcuno ha scritto nella tua discussione
         public const string CommentoDiscussione = "CommentoDiscussione";
+        // Attività di una persona seguita con la campanella accesa (Follow.Avvisi)
+        public const string SeguitoGuarda = "SeguitoGuarda";
+        public const string SeguitoVisto = "SeguitoVisto";
+        public const string SeguitoVoto = "SeguitoVoto";
+        public const string SeguitoRecensione = "SeguitoRecensione";
     }
 
     // Elenchi presi da TMDB per il catalogo (valori usati nell'URL: /api/tmdb/elenco/{categoria})

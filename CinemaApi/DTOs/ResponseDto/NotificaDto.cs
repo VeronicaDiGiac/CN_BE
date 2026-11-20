@@ -21,5 +21,7 @@ namespace CinemaApi.DTOs.ResponseDto
         // Solo per NuovoEpisodio
         public int? Stagione { get; set; }
         public int? Episodio { get; set; }
+        // Solo per SeguitoVoto
+        public int? Voto { get; set; }
     }
 }

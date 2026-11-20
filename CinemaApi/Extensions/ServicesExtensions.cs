@@ -31,6 +31,7 @@ namespace CinemaApi.Extensions
             services.AddScoped<SalvatiService>();
             services.AddScoped<VotiService>();
             services.AddScoped<SuggerimentiService>();
+            services.AddScoped<StoGuardandoService>();
 
             // Accesso con Google: verifica dei token di Auth0 (singleton per tenere in cache le chiavi pubbliche)
             services.AddSingleton<VerificaAuth0>();
