@@ -19,11 +19,27 @@ namespace CinemaApi.Controllers
 
         private readonly TmdbService _tmdbService;
         private readonly FilmService _filmService;
+        private readonly SuggerimentiService _suggerimenti;
 
-        public TmdbController(TmdbService tmdbService, FilmService filmService)
+        public TmdbController(TmdbService tmdbService, FilmService filmService, SuggerimentiService suggerimenti)
         {
             _tmdbService = tmdbService;
             _filmService = filmService;
+            _suggerimenti = suggerimenti;
+        }
+
+        // "Potrebbero piacerti" dell'utente autenticato: film (predefinito) o serie (tipo=Serie)
+        // scelti da quello che ha visto e votato. Ruolo = il motivo ("Perché ti è piaciuto X").
+        // Vuoto se non ha ancora visto niente di collegato a TMDB.
+        [HttpGet("suggerimenti")]
+        [Authorize]
+        [ProducesResponseType(typeof(List<TitoloPersonaDto>), 200)]
+        [ProducesResponseType(429)]
+        public async Task<IActionResult> Suggerimenti(string? tipo = null)
+        {
+            var titoli = await _suggerimenti.Suggerimenti(User.IdUtente(), TipiTitolo.Normalizza(tipo) ?? TipiTitolo.Film);
+            await SegnaGiaNelCatalogo(new TmdbRicercaDto { Risultati = titoli.Cast<TmdbRisultatoDto>().ToList() });
+            return Ok(titoli);
         }
 
         // Ricerca pubblica su TMDB di film (predefinito) o serie (tipo=Serie).

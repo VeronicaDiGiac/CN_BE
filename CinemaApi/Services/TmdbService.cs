@@ -185,6 +185,20 @@ namespace CinemaApi.Services
                 .ToList();
         }
 
+        // Titoli che TMDB consiglia a chi ha visto questo film o serie (i più pertinenti prima).
+        // Senza locandina, talk show e notiziari no: nei suggerimenti non servono
+        public async Task<List<TmdbRisultatoDto>> Consigliati(int tmdbId, string tipo)
+        {
+            var percorso = tipo == TipiTitolo.Serie ? "tv" : "movie";
+            var risposta = await GetInCache<RispostaCrediti>(
+                $"{percorso}/{tmdbId}/recommendations?language={Lingua}", TimeSpan.FromHours(12));
+            return (risposta?.Results ?? new List<CreditoPersona>())
+                .Where(c => c.PosterPath != null)
+                .Where(c => !c.GenreIds.Contains(GenereTalk) && !c.GenreIds.Contains(GenereNotizie))
+                .Select(c => Risultato(c, tipo))
+                .ToList();
+        }
+
         private static TmdbRisultatoDto Risultato(CreditoPersona c, string tipo) => new()
         {
             TmdbId = c.Id,
