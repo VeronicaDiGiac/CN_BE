@@ -37,6 +37,25 @@ namespace CinemaApi.DTOs.ResponseDto
         public List<PiattaformaDto> Acquisto { get; set; } = new();
         // Minuti secondo TMDB (usata anche per completare Film.DurataMinuti)
         public int? DurataMinuti { get; set; }
+        // Video su YouTube "dietro le quinte", featurette e papere (prima quelli in italiano)
+        public List<VideoExtraDto> DietroLeQuinte { get; set; } = new();
+    }
+
+    public class VideoExtraDto
+    {
+        // Chiave del video YouTube
+        public string Chiave { get; set; } = "";
+        public string? Titolo { get; set; }
+        // Uno dei valori di TipiVideoExtra: DietroLeQuinte, Featurette, Papere
+        public string Tipo { get; set; } = "";
+        public string? Lingua { get; set; }
+    }
+
+    public static class TipiVideoExtra
+    {
+        public const string DietroLeQuinte = "DietroLeQuinte";
+        public const string Featurette = "Featurette";
+        public const string Papere = "Papere";
     }
 
     public class PiattaformaDto

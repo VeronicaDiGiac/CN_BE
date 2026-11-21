@@ -325,6 +325,17 @@ namespace CinemaApi.Services
                     .Select(v => v.Key)
                     .FirstOrDefault();
 
+                // Dietro le quinte, featurette e papere: come è stato girato il film
+                extra.DietroLeQuinte = (film.Videos?.Results ?? new List<Video>())
+                    .Where(v => v.Site == "YouTube" && !string.IsNullOrEmpty(v.Key) && TipiDietroLeQuinte.ContainsKey(v.Type ?? ""))
+                    .GroupBy(v => v.Key).Select(g => g.First())
+                    .OrderBy(v => TipiDietroLeQuinte[v.Type!].Ordine)
+                    .ThenBy(v => v.Iso6391 == "it" ? 0 : 1)
+                    .ThenBy(v => v.Official ? 0 : 1)
+                    .Take(MassimoVideoExtra)
+                    .Select(v => new VideoExtraDto { Chiave = v.Key!, Titolo = v.Name, Tipo = TipiDietroLeQuinte[v.Type!].Tipo, Lingua = v.Iso6391 })
+                    .ToList();
+
                 if (film.WatchProviders?.Results.TryGetValue(Regione, out var italia) == true)
                 {
                     extra.LinkDoveGuardarlo = italia.Link;
@@ -918,9 +929,19 @@ namespace CinemaApi.Services
 
         private class ElencoVideo { public List<Video> Results { get; set; } = new(); }
 
+        // Tipi di video TMDB per "Dietro le quinte", nell'ordine in cui si mostrano
+        private static readonly Dictionary<string, (int Ordine, string Tipo)> TipiDietroLeQuinte = new()
+        {
+            ["Behind the Scenes"] = (0, TipiVideoExtra.DietroLeQuinte),
+            ["Featurette"] = (1, TipiVideoExtra.Featurette),
+            ["Bloopers"] = (2, TipiVideoExtra.Papere),
+        };
+        private const int MassimoVideoExtra = 8;
+
         private class Video
         {
             public string? Key { get; set; }
+            public string? Name { get; set; }
             public string? Site { get; set; }
             public string? Type { get; set; }
             public bool Official { get; set; }
