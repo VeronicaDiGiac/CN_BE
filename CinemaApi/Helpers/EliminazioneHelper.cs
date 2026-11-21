@@ -74,6 +74,11 @@ namespace CinemaApi.Helpers
                 .Where(s => s.TipoContenuto == TipiContenuto.Discussione && idDiscussioni.Contains(s.IdContenuto))
                 .ExecuteDeleteAsync();
 
+            // Il film club perde la sua discussione (se ne crea un'altra alla prossima apertura della home)
+            await db.FilmClub
+                .Where(c => c.IdDiscussione != null && idDiscussioni.Contains(c.IdDiscussione.Value))
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.IdDiscussione, (int?)null));
+
             await db.Discussioni
                 .Where(d => idDiscussioni.Contains(d.IdDiscussione))
                 .ExecuteDeleteAsync();

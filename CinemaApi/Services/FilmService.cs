@@ -205,6 +205,9 @@ namespace CinemaApi.Services
             await _db.SerieSeguite.Where(s => s.IdFilm == id).ExecuteDeleteAsync();
             await _db.VotiFilm.Where(v => v.IdFilm == id).ExecuteDeleteAsync();
             await _db.StoGuardando.Where(s => s.IdFilm == id).ExecuteDeleteAsync();
+            // Home: le risposte dei sondaggi perdono la locandina, il film club di quel titolo sparisce
+            await _db.OpzioniSondaggio.Where(o => o.IdFilm == id).ExecuteUpdateAsync(s => s.SetProperty(o => o.IdFilm, (int?)null));
+            await _db.FilmClub.Where(c => c.IdFilm == id).ExecuteDeleteAsync();
             await _db.DaVedere.Where(d => d.IdFilm == id).ExecuteDeleteAsync();
             await _db.Notifiche.Where(n => n.IdFilm == id).ExecuteDeleteAsync();
             await _db.Segnalazioni.Where(s => s.TipoContenuto == TipiContenuto.Film && s.IdContenuto == id).ExecuteDeleteAsync();
@@ -301,6 +304,12 @@ namespace CinemaApi.Services
             await _db.SerieSeguite.Where(s => s.IdFilm == idDaEliminare && avvisiSulTenuto.Contains(s.IdUtente)).ExecuteDeleteAsync();
             await _db.Database.ExecuteSqlInterpolatedAsync(
                 $"UPDATE dbo.SerieSeguite SET IdFilm = {idDaTenere} WHERE IdFilm = {idDaEliminare}");
+
+            // Home: sondaggi e film club passano alla scheda tenuta
+            await _db.OpzioniSondaggio.Where(o => o.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(o => o.IdFilm, idDaTenere));
+            await _db.FilmClub.Where(c => c.IdFilm == idDaEliminare)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.IdFilm, idDaTenere));
 
             // "Sto guardando" dura poche ore: passa alla scheda tenuta
             await _db.StoGuardando.Where(s => s.IdFilm == idDaEliminare)

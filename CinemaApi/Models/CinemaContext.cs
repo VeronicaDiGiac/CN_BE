@@ -74,6 +74,12 @@ namespace CinemaApi.Models
 
         public DbSet<StoGuardando> StoGuardando { get; set; }
 
+        // Home: sondaggio della settimana e film club (Database/HomeInterattiva.sql)
+        public DbSet<Sondaggio> Sondaggi { get; set; }
+        public DbSet<OpzioneSondaggio> OpzioniSondaggio { get; set; }
+        public DbSet<VotoSondaggio> VotiSondaggio { get; set; }
+        public DbSet<FilmClub> FilmClub { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -100,6 +106,9 @@ namespace CinemaApi.Models
 
             modelBuilder.Entity<VotoRecensione>()
                 .HasKey(v => new { v.IdUtente, v.IdRecensione });
+
+            modelBuilder.Entity<VotoSondaggio>()
+                .HasKey(v => new { v.IdUtente, v.IdSondaggio });
 
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)
