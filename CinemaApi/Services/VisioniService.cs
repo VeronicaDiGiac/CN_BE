@@ -64,6 +64,11 @@ namespace CinemaApi.Services
                     Voto = _db.VotiFilm
                         .Where(f => f.IdUtente == v.IdUtente && f.IdFilm == v.IdFilm)
                         .Select(f => (int?)f.Voto)
+                        .FirstOrDefault(),
+                    Tipo = v.Film.Tipo,
+                    IdRecensione = _db.Recensioni
+                        .Where(r => r.IdUtente == v.IdUtente && r.IdFilm == v.IdFilm)
+                        .Select(r => (int?)r.IdRecensione)
                         .FirstOrDefault()
                 })
                 .ToListAsync();

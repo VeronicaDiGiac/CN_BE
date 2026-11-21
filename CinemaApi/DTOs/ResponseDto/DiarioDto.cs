@@ -13,6 +13,10 @@ namespace CinemaApi.DTOs.ResponseDto
         public DateOnly? DataVisione { get; set; }
         // Voto dell'utente a quel film, se l'ha dato (con o senza recensione)
         public int? Voto { get; set; }
+        // "Film" o "Serie"
+        public string Tipo { get; set; } = "Film";
+        // Recensione dell'utente a quel titolo, se l'ha scritta (il diario mostra "Recensito" con il link)
+        public int? IdRecensione { get; set; }
     }
 
     public class DaVedereDto
